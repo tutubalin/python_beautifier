@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python-beautifier"
+version = "0.1.0"
+description = "Turn Python source files into beautiful, structured, self-contained HTML documents."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["python", "html", "code", "documentation", "visualization", "syntax-highlighting"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+
+[project.urls]
+Homepage = "https://github.com/tutubalin/python_beautifier"
+
+[project.scripts]
+pybeautify = "python_beautifier.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["python_beautifier*"]
+
+[tool.setuptools.package-data]
+python_beautifier = ["assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

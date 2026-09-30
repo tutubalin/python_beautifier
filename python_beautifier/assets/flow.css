@@ -1,0 +1,221 @@
+/* ==========================================================================
+   The flow: code rendered by control-flow structure
+   ========================================================================== */
+
+.flow { --gw: var(--gutter, 54px); font: 13px/1.62 var(--font-mono); color: var(--ink); min-width: 0; }
+.run { display: flex; flex-direction: column; min-width: 0; }
+.mod-flow > .run {
+  margin: 16px 0; padding: 10px 8px 10px 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-s);
+}
+.mod-flow > .card { margin: 26px 0; }
+.mod-flow > .box, .mod-flow > .if, .mod-flow > .try, .mod-flow > .guard { margin-right: 0; }
+
+/* ---------- rows ---------------------------------------------------------- */
+.ln { position: relative; display: flex; align-items: flex-start; min-width: 0; padding-right: 10px; border-radius: 7px; }
+.ln:hover { background: var(--hover); }
+.ln.gap { margin-top: .8em; }
+.g {
+  flex: none; width: var(--gw); height: 1.62em; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 6px;
+  color: var(--ink-4); font: normal 500 10.5px var(--font-mono); user-select: none;
+}
+.g::before { content: attr(data-n); }
+.g .i { width: 13px; height: 13px; }
+.c { flex: 0 1 auto; min-width: 0; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.run .hc > .c { min-width: var(--cw, 0); }
+.tc {
+  flex: 1 1 16ch; min-width: 16ch; margin-left: 14px; padding-top: 1px; color: var(--ink-3); font: italic 12.2px/1.6 var(--font-ui);
+}
+.tc::before { content: "# "; opacity: .5; font-family: var(--font-mono); font-style: normal; }
+.tc.pr { font: 11px/1.7 var(--font-mono); opacity: .6; font-style: normal; }
+.tc.td { color: var(--c-if); font-weight: 700; font-style: normal; }
+.no-lines .g::before { display: none; }
+.no-lines .g { width: 28px; justify-content: flex-end; }
+.no-lines .flow { --gw: 28px; }
+.no-comments .tc, .no-comments .note:not(.todo), .no-comments .hdr-note { display: none; }
+
+/* exits leave the flow: return / raise / break / continue */
+.x { --xc: var(--c-ret); background: color-mix(in oklab, var(--xc) 9%, transparent); box-shadow: inset 3px 0 0 var(--xc); border-radius: 4px 9px 9px 4px; margin-block: 1px; }
+.x:hover { background: color-mix(in oklab, var(--xc) 15%, transparent); }
+.x-raise, .x-exit { --xc: var(--c-raise); }
+.x-brk, .x-cont { --xc: var(--c-loop); }
+.x .g { color: var(--xc); }
+.x .c > i.k:first-child { color: var(--xc); font-weight: 800; }
+.st { --sc: var(--ink-3); }
+.st .g { color: var(--sc); }
+.st-assert { --sc: var(--c-yes); } .st-imp { --sc: var(--c-try); } .st-glob { --sc: var(--c-loop); } .st-del { --sc: var(--c-no); }
+.st-await { --sc: var(--c-try); } .st-yield { --sc: var(--c-with); } .st-log { --sc: var(--ink-4); }
+.st-log > .c { opacity: .78; }
+.dim > .c { opacity: .5; }
+
+/* ---------- notes (comments) ---------------------------------------------- */
+.note {
+  --nc: var(--ink-3); position: relative; display: flex; gap: 10px; align-items: flex-start; margin: 7px 10px 7px var(--gw); padding: 7px 13px 7px 11px;
+  border-radius: 11px; background: color-mix(in oklab, var(--nc) 7%, var(--surface)); border: 1px solid color-mix(in oklab, var(--nc) 18%, var(--line));
+  font: 13px/1.5 var(--font-ui); color: var(--ink-2); min-width: 0;
+}
+.note > .i { width: 15px; height: 15px; margin-top: 2px; color: var(--c-yes); }
+.note { --nc: var(--c-yes); }
+.note .nt { min-width: 0; overflow-wrap: anywhere; }
+.note .nl { display: block; }
+.note code { font-size: .92em; padding: 0 5px; border-radius: 5px; background: color-mix(in oklab, var(--nc) 12%, transparent); }
+.note.todo { --nc: var(--c-if); align-items: baseline; border-left: 3px solid var(--c-if); }
+.todo-tag { flex: none; font: 800 10px/1.9 var(--font-ui); letter-spacing: .08em; padding: 0 9px; border-radius: 99px; color: #fff; background: var(--c-if); }
+.note.ccode { --nc: var(--ink-3); background: transparent; border-style: dashed; align-items: flex-start; padding: 5px 12px; }
+.note.ccode .c { opacity: .6; filter: saturate(.5); font-size: 12.5px; }
+.cc-tag { flex: none; font: 700 9.5px/2 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); padding: 0 8px; border-radius: 99px; background: var(--surface-3); }
+.note.pragma { margin-block: 2px; padding: 0 0 0 4px; background: none; border: 0; font: 11px var(--font-mono); opacity: .55; }
+.rule { display: flex; align-items: center; gap: 14px; margin: 22px 0 12px; padding-left: var(--gw); color: var(--ink-3); }
+.rule::before, .rule::after { content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, var(--line-2)); }
+.rule::after { background: linear-gradient(270deg, transparent, var(--line-2)); }
+.rule::before { flex: 0 0 24px; }
+.rule span { padding: 4px 14px; border-radius: 99px; background: var(--surface-3); border: 1px solid var(--line); font: 700 11px/1.5 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+
+/* ---------- tags ---------------------------------------------------------- */
+.tag {
+  --tc: var(--c-if); display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 1px 10px 1px 8px; border-radius: 99px;
+  font: 800 10px/1.9 var(--font-ui); letter-spacing: .09em; white-space: nowrap; color: color-mix(in oklab, var(--tc) 80%, var(--ink));
+  background: color-mix(in oklab, var(--tc) 14%, var(--surface)); border: 1px solid color-mix(in oklab, var(--tc) 34%, transparent);
+}
+.tag .i { width: 12px; height: 12px; }
+.tag b { font-weight: 800; }
+.t-if { --tc: var(--c-if); } .t-else { --tc: var(--c-else); } .t-loop { --tc: var(--c-loop); } .t-with { --tc: var(--c-with); }
+.t-try { --tc: var(--c-try); } .t-except { --tc: var(--c-except); } .t-finally { --tc: var(--c-finally); } .t-match, .t-case { --tc: var(--c-match); } .t-main { --tc: var(--c-main); }
+.otherwise { color: var(--ink-3); font: italic 12.5px var(--font-ui); }
+.otherwise code { font-style: normal; font-size: .95em; }
+.hint { color: var(--ink-3); font: 12.5px var(--font-ui); }
+.hint code { font-size: .95em; }
+.cond { flex: 1 1 auto; min-width: 0; padding: 1px 0; }
+.wis { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.wi { display: block; }
+.exc { flex: 1 1 auto; min-width: 0; }
+.cond-rows { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.cr { display: flex; align-items: baseline; gap: 8px; }
+.cr .c { flex: 1 1 auto; }
+.cop { flex: none; width: 3.2em; text-align: right; font: 800 9.5px var(--font-ui); letter-spacing: .09em; color: var(--c-if); }
+.cop.first { visibility: hidden; }
+
+/* ---------- boxes: loops, with, gates ------------------------------------ */
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
+.bh { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-width: 0; }
+.bh > .tc { margin-left: auto; flex: 0 1 auto; }
+.box {
+  --bc: var(--c-loop); margin: 10px 10px 10px 0; border: 1px solid color-mix(in oklab, var(--bc) 28%, var(--line)); border-left: 4px solid var(--bc);
+  border-radius: var(--r-md); background: color-mix(in oklab, var(--bc) 2.6%, var(--surface)); min-width: 0;
+}
+.box > .bh { padding: 6px 12px 6px 8px; cursor: pointer; background: color-mix(in oklab, var(--bc) 8%, var(--surface)); border-radius: 0 var(--r-md) 0 0; }
+.box:not([open]) > .bh { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.box[open] > .bh { border-bottom: 1px solid color-mix(in oklab, var(--bc) 16%, var(--line)); }
+.box > .bh:hover { background: color-mix(in oklab, var(--bc) 13%, var(--surface)); }
+.box > .bh .chv { width: 14px; height: 14px; color: var(--bc); opacity: .8; }
+.box > .bb { padding: 6px 0 8px 10px; min-width: 0; }
+.b-with { --bc: var(--c-with); } .b-if { --bc: var(--c-if); } .b-match { --bc: var(--c-match); } .b-main { --bc: var(--c-main); }
+.b-main { border-width: 1px; border-left-width: 4px; background: linear-gradient(135deg, color-mix(in oklab, var(--c-main) 7%, var(--surface)), var(--surface)); }
+.b-loop > .bb { position: relative; margin: 8px 0 8px 18px; padding: 0 0 0 10px; border-left: 2px dashed color-mix(in oklab, var(--c-loop) 42%, transparent); }
+.b-loop > .bb::before {
+  content: ""; position: absolute; left: -7px; top: -8px; border: 6px solid transparent; border-top: 0; border-bottom: 8px solid color-mix(in oklab, var(--c-loop) 62%, transparent);
+}
+.sub { margin: 10px 10px 4px -10px; padding-left: 10px; border-top: 1px dashed color-mix(in oklab, var(--c-else) 40%, var(--line)); }
+.sub-h { display: flex; align-items: center; gap: 8px; padding: 8px 0 4px; }
+.sub-b { padding-left: 2px; }
+
+/* ---------- guards: ``if cond: return`` --------------------------------- */
+.guard {
+  display: flex; flex-wrap: wrap; align-items: stretch; margin: 6px 10px 6px 0; border-radius: var(--r-md); overflow: hidden; background: var(--surface);
+  border: 1px solid color-mix(in oklab, var(--c-if) 32%, var(--line));
+}
+.gc { flex: 1 1 280px; max-width: 100%; display: flex; align-items: center; gap: 9px; padding: 5px 12px 5px 9px; background: color-mix(in oklab, var(--c-if) 9%, var(--surface)); min-width: 0; }
+.gc .cond { flex: 1 1 auto; }
+.garrow { flex: none; display: grid; place-items: center; width: 26px; color: var(--c-if); background: linear-gradient(90deg, color-mix(in oklab, var(--c-if) 9%, var(--surface)), var(--surface)); }
+.garrow .i { width: 15px; height: 15px; }
+.gt { flex: 2 1 300px; min-width: 0; padding: 2px 4px 2px 0; }
+.gt .run { padding: 0; }
+.gt .ln { padding-block: 0; }
+.guard.g-return .garrow, .guard.g-return .gt { background-color: color-mix(in oklab, var(--c-ret) 5%, transparent); }
+.guard.g-raise, .guard.g-exit { border-color: color-mix(in oklab, var(--c-raise) 34%, var(--line)); }
+.guard.g-raise .gc, .guard.g-exit .gc { background: color-mix(in oklab, var(--c-raise) 8%, var(--surface)); }
+.guard.g-continue, .guard.g-break { border-color: color-mix(in oklab, var(--c-loop) 34%, var(--line)); }
+.guard.g-continue .gc, .guard.g-break .gc { background: color-mix(in oklab, var(--c-loop) 8%, var(--surface)); }
+
+/* ---------- if / else as two columns -------------------------------------- */
+.if { margin: 12px 10px 12px 0; min-width: 0; }
+.if.split { border: 1px solid color-mix(in oklab, var(--c-if) 34%, var(--line)); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+.if-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 14px 8px 10px; background: linear-gradient(90deg, color-mix(in oklab, var(--c-if) 15%, var(--surface)), color-mix(in oklab, var(--c-if) 4%, var(--surface))); border-bottom: 1px solid color-mix(in oklab, var(--c-if) 22%, var(--line)); }
+.if-h .tc { margin-left: auto; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--col, 60ch)), 1fr)); gap: 1px; background: var(--line); }
+.col { --cc: var(--c-yes); background: var(--surface); min-width: 0; display: flex; flex-direction: column; }
+.col.no { --cc: var(--c-no); }
+.col-h { display: flex; align-items: center; gap: 7px; padding: 5px 12px; background: color-mix(in oklab, var(--cc) 10%, var(--surface)); color: var(--cc); font: 800 10.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.col-h .i { width: 14px; height: 14px; padding: 2px; border-radius: 99px; background: var(--cc); color: var(--surface); stroke-width: 3.2; box-sizing: content-box; }
+.col-h span { margin-left: 2px; color: var(--ink-3); font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; }
+.col-h .tc { margin-left: auto; }
+.col-b { flex: 1; padding: 6px 0 8px 6px; min-width: 0; }
+.col.leaves .col-h { box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--cc) 30%, transparent); }
+
+/* ---------- decision ladder (if / elif / else, match) --------------------- */
+.ladder { display: grid; gap: 1px; background: var(--line); border: 1px solid color-mix(in oklab, var(--c-if) 30%, var(--line)); border-radius: var(--r-lg); overflow: hidden; }
+.b-match .ladder { border-color: color-mix(in oklab, var(--c-match) 30%, var(--line)); margin: 8px 8px 6px 0; }
+.rung { --rc: var(--c-if); display: flex; flex-wrap: wrap; background: var(--surface); min-width: 0; }
+.rung > .when { flex: 1 1 var(--when-w, 30ch); }
+.rung > .then { flex: 4 1 var(--then-w, 46ch); }
+.rung .when { display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start; gap: 6px 10px; padding: 9px 12px; background: color-mix(in oklab, var(--rc) 8%, var(--surface)); min-width: 0; }
+.b-match .rung { --rc: var(--c-match); }
+.rung.else { --rc: var(--c-else); }
+.rung .when .tc { margin-left: 0; flex-basis: 100%; }
+.rung .then { padding: 6px 0 8px 6px; min-width: 0; }
+.rung.leaves .when { box-shadow: inset 3px 0 0 color-mix(in oklab, var(--rc) 55%, transparent); }
+.ladder.stackme .when, .ladder.stackme .then { flex-basis: 100%; }
+
+/* ---------- stacked branches (long bodies) -------------------------------- */
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.arm { --ac: var(--c-if); border: 1px solid color-mix(in oklab, var(--ac) 30%, var(--line)); border-left: 4px solid var(--ac); border-radius: var(--r-md); background: color-mix(in oklab, var(--ac) 2.4%, var(--surface)); min-width: 0; }
+.arm.no { --ac: var(--c-else); }
+.arm > .bh { padding: 6px 12px 6px 8px; cursor: pointer; background: color-mix(in oklab, var(--ac) 8%, var(--surface)); border-radius: 0 var(--r-md) 0 0; }
+.arm:not([open]) > .bh { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.arm[open] > .bh { border-bottom: 1px solid color-mix(in oklab, var(--ac) 16%, var(--line)); }
+.arm > .bh:hover { background: color-mix(in oklab, var(--ac) 13%, var(--surface)); }
+.arm > .bh .chv { width: 14px; height: 14px; color: var(--ac); opacity: .8; }
+.arm > .bb { padding: 6px 0 8px 10px; min-width: 0; }
+
+/* ---------- try / except -------------------------------------------------- */
+.try { margin: 14px 10px 14px 0; border: 1px solid color-mix(in oklab, var(--c-try) 30%, var(--line)); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; min-width: 0; }
+.try-h { display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 10px; background: linear-gradient(90deg, color-mix(in oklab, var(--c-try) 14%, var(--surface)), color-mix(in oklab, var(--c-try) 3%, var(--surface))); border-bottom: 1px solid color-mix(in oklab, var(--c-try) 20%, var(--line)); }
+.lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--col, 60ch)), 1fr)); gap: 1px; background: var(--line); }
+.lane { background: var(--surface); min-width: 0; }
+.lane-h { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font: 800 10.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.lane-h .i { width: 14px; height: 14px; }
+.lane-h span { margin-left: 2px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-3); font-size: 12px; }
+.lane.ok .lane-h { color: var(--c-yes); background: color-mix(in oklab, var(--c-yes) 9%, var(--surface)); }
+.lane.err .lane-h { color: var(--c-except); background: color-mix(in oklab, var(--c-except) 9%, var(--surface)); }
+.lane-h .tc { margin-left: auto; }
+.lane-b { padding: 4px 0 8px 6px; min-width: 0; }
+.handler { --hc: var(--c-except); margin: 6px 8px 6px 0; border: 1px solid color-mix(in oklab, var(--hc) 28%, var(--line)); border-left: 4px solid var(--hc); border-radius: var(--r-md); background: color-mix(in oklab, var(--hc) 3%, var(--surface)); min-width: 0; }
+.handler.ok { --hc: var(--c-try); } .handler.okelse { --hc: var(--c-yes); } .handler.fin { --hc: var(--c-finally); }
+.handler > .bh { padding: 6px 12px 6px 10px; background: color-mix(in oklab, var(--hc) 8%, var(--surface)); border-radius: 0 var(--r-md) 0 0; border-bottom: 1px solid color-mix(in oklab, var(--hc) 16%, var(--line)); }
+.handler > .bb { padding: 4px 0 8px 6px; min-width: 0; }
+.try > .handler { margin: 8px 10px 8px 8px; }
+.try.lanes-mode > .handler { margin-top: 10px; }
+
+/* ---------- folded runs (imports, class attributes) ----------------------- */
+.fold { margin: 8px 10px 8px 0; border: 1px dashed var(--line-2); border-radius: var(--r-md); background: color-mix(in oklab, var(--surface-2) 70%, transparent); }
+.mod-flow > .fold { margin: 14px 0; }
+.fold > summary { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; color: var(--ink-3); font: 700 11.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; }
+.fold > summary .i { width: 14px; height: 14px; transition: transform .18s; }
+.fold:not([open]) > summary .i { transform: rotate(-90deg); }
+.fold > summary em { margin-left: auto; font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; }
+.fold[open] > summary { border-bottom: 1px dashed var(--line-2); }
+.fold > .run { padding: 6px 0; }
+.fold:hover > summary { color: var(--ink); }
+
+/* ---------- variable hover highlight (CSS Custom Highlight API) ----------- */
+::highlight(pb-var) { background-color: rgb(91 91 240 / 0.26); color: inherit; }
+html.is-dark ::highlight(pb-var) { background-color: rgb(139 140 255 / 0.36); }
+::highlight(pb-find) { background-color: rgb(255 200 0 / 0.45); }
+
+@media (max-width: 720px) {
+  .flow { --gw: 44px; }
+  .g { padding: 0 4px; }
+  .ln { flex-wrap: wrap; }
+  .ln > .c, .run .hc > .c { flex: 1 1 0; min-width: 0; }
+  .tc { flex-basis: 100%; margin-left: 0; padding-left: var(--gw); }
+}
