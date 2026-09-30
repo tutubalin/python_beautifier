@@ -74,7 +74,7 @@ def tricky_snippets() -> List[str]:
         "match command.split():\n    case [\"go\", direction] if direction in DIRS:\n        pass\n    case [\"drop\", *objects]:\n        pass\n    case {\"k\": v, **rest}:\n        pass\n    case Point(x=0, y=0) | None:\n        pass\n    case _:\n        pass\n",
         "with (open('a') as f, open('b') as g):\n    pass\n",
         "names = {k: v for k, v in zip(a, b) if k}\nprint(*names, sep='')\n",
-        "\tx = 1\n" if False else "if True:\n\tx = 1\n\tif x:\n\t\ty = 2\n",
+        "if True:\n\tx = 1\n\tif x:\n\t\ty = 2\n",
         "π = 3.14159\nnaïve = 'ünïcode ✓'\n",
         "from __future__ import annotations\nfrom . import sibling\nfrom .. import parent as p\nimport os.path as osp, sys\n",
         "@decorator(arg=1)\n@other.attr\nclass D:\n    '''Doc.'''\n",
@@ -85,4 +85,9 @@ def tricky_snippets() -> List[str]:
         "assert x, 'message'\ndel a[0], b\nraise SystemExit from None\n",
         "print('no newline at end')",
         "for i in range(3):\n    for j in range(3):\n        if i == j:\n            continue\n        print(i, j)\nelse:\n    print('done')\n",
+        # NumPy / PyTorch style subscripts
+        "img = img[:, num_txt_tokens:, ...]\nx[:, 0] = 1\ndel x[..., None]\n",
+        "def f(x, idx):\n    y = x[\n        :,  # every row\n        n:,  # skip the first n columns\n        ...,\n    ]\n    if x[:, 0].any():\n        return y[None, :, idx[:, 0]]\n    for r in x[::2, ...]:\n        pass\n",
+        "a = b[1:, ::-1] + b[:, None, ...] * c[[0, 2], :] + d[d > 0, :]\nprint(f\"{a[:, 0]}\", x[(i := 1), :])\n",
+        "from typing import Tuple, Callable\nVec = Tuple[float, ...]\ndef g(x: tuple[int, ...]) -> Callable[..., int]: ...\n",
     ]
