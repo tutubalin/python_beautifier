@@ -82,8 +82,47 @@ beautify_file("my_module.py", "out/my_module.html", theme="dark")        # write
 | comments | notes in the flow; `TODO` / `FIXME` are also collected on a board |
 | runs of imports and of class attributes | folded away, one click to open |
 | nested functions and classes | their own nested cards |
+| NumPy / PyTorch / pandas subscripts such as `x[:, n:, ...]` | every term underlined by kind, and a strip that explains each axis ([below](#array-indexing-you-can-actually-read)) |
 
 ![try / except drawn as a happy-path lane and a failure lane](docs/lanes.png)
+
+### Array indexing you can actually read
+
+`img = tokens[:, num_txt_tokens:, ...]` packs a whole-axis colon, a slice and an ellipsis into one
+pair of brackets, and real code adds `None`, negative numbers, steps and masks. Here every comma
+separated term of such a subscript is underlined by kind, and a strip under the statement explains
+the terms in the same order as the code. Point at a term and its explanation lights up (and the
+other way round).
+
+![Two statements that slice a tensor, decoded axis by axis](docs/indexing.png)
+
+| Term | Reads as |
+| --- | --- |
+| `:` | all of this axis |
+| `n:` `:n` `a:b` `::2` `::-1` `-3:` `:-1` | from `n` to the end, up to `n`, `a` up to `b`, every 2nd item, reversed, the last 3, all but the last item (length-one slices say "axis kept") |
+| `...` | all remaining axes; terms after it are numbered from the end (`axis −1`) |
+| `None`, `np.newaxis` | a new axis of length 1 (it does not use up an axis of the array) |
+| `0`, `-1`, `i` | pick one position; an integer removes the axis |
+| `x > 0`, `~m`, `[0, 2]` | a boolean mask, or positions to gather |
+| `df.loc[...]`, `df.iloc[...]` | rows and columns; `.loc` slices go by label and include their end |
+
+Runs such as `m[None, None, None, :]` share one cell. The strip sits under simple statements, and above
+the `if` (with its `elif`s), `while`, `for`, `with` or `match` block whose header indexes (module-level
+headers only get the underlines). The code itself is never altered: what you read is exactly what
+was written. The **Indexing** button in the toolbar switches it all off.
+
+<p align="center"><img src="docs/indexing-dark.png" alt="Two subscripts in one statement, in the dark theme" width="80%"></p>
+
+This works from syntax alone, so it is honest about what it cannot know: in `x[:, idx]` the name
+`idx` may be an integer, an index array or a mask, which is why it says "index with `idx`", and a
+multi-dimensional boolean mask uses up several axes, which the axis numbers cannot account for.
+Ordinary Python (`xs[0]`, `s[1:]`, `d["key"]`, `grid[r, c]`) and type subscripts
+(`Dict[str, int]`, `tuple[int, ...]`) are left alone. A slice among several terms, or `np.newaxis`,
+always counts; a bare `...` or `None` counts only in files that import an array library (NumPy,
+PyTorch, JAX, pandas, ...), because `handlers[None]` is just a dictionary lookup and pyparsing's
+`expr[1, ...]` means "one or more". See
+[`examples/tensor_indexing.html`](examples/tensor_indexing.html), generated from
+[`examples/tensor_indexing.py`](examples/tensor_indexing.py), for 26 real-world subscripts.
 
 ### The whole module at a glance
 
@@ -169,15 +208,16 @@ All thresholds are named constants at the top of
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e . pytest
-pytest                                                    # 240+ tests, a few seconds
-python -m python_beautifier examples/showcase.py -o examples/showcase.html   # refresh the example
+pytest                                                    # 330+ tests, a few seconds
+python -m python_beautifier examples/showcase.py -o examples/showcase.html   # refresh the examples
+python -m python_beautifier examples/tensor_indexing.py -o examples/tensor_indexing.html
 ```
 
 The tests cover the docstring parser, the analysis, the structure of the output and the CLI. The
 central guarantee is tested too: **every character of the source appears in the page exactly once**
 (for the showcase, for 45 standard-library modules and for a set of awkward snippets), so the page
 can never silently drop or duplicate code. Pathological input is tested as well.
-The screenshots in `docs/` were captured from `examples/showcase.html` with headless Chromium.
+The screenshots in `docs/` were captured from the two example pages with headless Chromium.
 
 ```text
 python_beautifier/
@@ -185,9 +225,11 @@ python_beautifier/
   source.py highlight.py              source text, tokens, lossless syntax highlighting
   docstrings.py                       Google / NumPy / Sphinx / Epytext parser
   model.py analysis.py                definitions, parameters, complexity, types, call graph
+  indexing.py                         decodes NumPy / PyTorch style subscripts, axis by axis
   render/                             flow.py (bodies), cards.py (headers, tables),
-                                      widgets.py (charts), core.py (page), prose.py, icons.py
+                                      widgets.py (charts), index.py (indexing strips),
+                                      core.py (page), prose.py, icons.py
   assets/                             base.css, cards.css, flow.css, app.js (inlined into the page)
-examples/                             showcase.py and the generated showcase.html
+examples/                             showcase.py and tensor_indexing.py, with their generated pages
 tests/
 ```
