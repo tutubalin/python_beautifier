@@ -219,3 +219,48 @@ html.is-dark ::highlight(pb-var) { background-color: rgb(139 140 255 / 0.36); }
   .ln > .c, .run .hc > .c { flex: 1 1 0; min-width: 0; }
   .tc { flex-basis: 100%; margin-left: 0; padding-left: var(--gw); }
 }
+
+/* ---------- indexing guide: NumPy / PyTorch subscripts ---------------------- */
+/* Inline: every comma separated term of x[:, n:, ...] is underlined by kind (no padding, so the
+   layout maths of columns never changes). Below the statement: one cell per axis, same order. */
+.ax, .ix-c { --ixc: var(--ink-3); }
+.ik-slice { --ixc: var(--c-try); }
+.ik-rest { --ixc: var(--c-loop); }
+.ik-new { --ixc: var(--c-yes); }
+.ik-pick { --ixc: var(--c-if); }
+.ik-mask, .ik-take { --ixc: var(--c-match); }
+.ik-others { --ixc: var(--ink-4); }
+
+.ax {
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--ixc) 12%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--ixc) 65%, transparent);
+  transition: background-color .12s;
+}
+.ax.ix-on { background: color-mix(in oklab, var(--ixc) 36%, transparent); }
+
+.ix { display: flex; flex-direction: column; gap: 5px; margin: 1px 10px 6px var(--gw); padding: 5px 0 3px; user-select: none; font: 12px/1.35 var(--font-ui); }
+.ix-r { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
+.ix-h { display: inline-flex; align-items: center; gap: 6px; padding-right: 4px; color: var(--ink-3); font: 700 10px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; }
+.ix-h .i { width: 14px; height: 14px; color: var(--accent); }
+.ix-h code { padding: 1px 6px; border-radius: 6px; background: var(--surface-3); color: var(--ink-2); font: 600 11.5px var(--font-mono); letter-spacing: 0; text-transform: none; }
+.ix-c {
+  display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 3px 10px 4px 9px; border-radius: 9px;
+  background: color-mix(in oklab, var(--ixc) 7%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--ixc) 26%, var(--line)); border-left: 3px solid var(--ixc);
+  transition: box-shadow .12s, background-color .12s;
+}
+.ix-k { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ix-c small { flex: none; font: 700 9.5px/1.2 var(--font-ui); letter-spacing: .07em; text-transform: uppercase; color: color-mix(in oklab, var(--ixc) 80%, var(--ink)); }
+.ix-c .ix-t { min-width: 0; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font: 600 12.5px/1.3 var(--font-mono); }
+.ix-m { color: var(--ink-2); font: 12px/1.35 var(--font-ui); }
+.ix-m code { padding: 0 4px; border-radius: 4px; background: color-mix(in oklab, var(--ixc) 12%, transparent); font: 11.5px var(--font-mono); }
+.ix-c.ix-on { background: color-mix(in oklab, var(--ixc) 15%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in oklab, var(--ixc) 34%, transparent); }
+.ix-c.ik-others { border-style: dashed; border-left-style: solid; background: transparent; opacity: .72; }
+.ix-more { padding-left: 2px; color: var(--ink-3); font: italic 11.5px var(--font-ui); }
+.no-index .ix { display: none; }
+.no-index .ax { background: none; box-shadow: none; }
+@media (max-width: 720px) {
+  .ix { margin-left: 8px; }
+  .ix-c .ix-t { max-width: 26ch; }
+}

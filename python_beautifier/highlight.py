@@ -16,7 +16,7 @@ import re
 import tokenize
 from bisect import bisect_right
 from html import escape
-from typing import Iterable, List, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 Pos = Tuple[int, int]
 
@@ -437,8 +437,20 @@ def render_items(
     start: Pos,
     end: Pos,
     dedent: int = 0,
+    wraps: Sequence[Tuple[Pos, Pos, str]] = (),
 ) -> str:
-    """Render *items* between *start* and *end*, keeping inter-token whitespace."""
+    """Render *items* between *start* and *end*, keeping inter-token whitespace.
+
+    *wraps* are ``(start, end, opening_tag)`` ranges, properly nested, that begin at a token
+    start and finish at a token end; each becomes a ``<span>`` around exactly those tokens.
+    """
+    opens: Dict[Pos, List[str]] = {}
+    closes: Dict[Pos, int] = {}
+    for w_start, w_end, tag in wraps:
+        if w_start < start or w_end > end:
+            continue  # not completely inside this range: it would leave a span open
+        opens.setdefault(w_start, []).append(tag)
+        closes[w_end] = closes.get(w_end, 0) + 1
     out: List[str] = []
     pr, pc = start
     for it in items:
@@ -449,7 +461,11 @@ def render_items(
         gap = _slice(lines, (pr, pc), it.start)
         if gap:
             out.append(_dedent_gap(escape(gap, quote=False), dedent))
+        if opens:
+            out.extend(opens.get(it.start, ()))
         out.append(it.html)
+        if closes and it.end in closes:
+            out.append("</span>" * closes[it.end])
         pr, pc = it.end
     gap = _slice(lines, (pr, pc), end)
     if gap.strip():

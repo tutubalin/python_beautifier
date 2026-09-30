@@ -269,12 +269,12 @@ li.collapsed > .ol-sub { display: none; }
 
 /* ---------- top bar ----------------------------------------------------- */
 .topbar {
-  position: sticky; top: 0; z-index: 25; display: flex; align-items: center; gap: 8px; padding: 10px 24px;
+  position: sticky; top: 0; z-index: 25; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 24px;
   background: color-mix(in oklab, var(--bg) 82%, transparent); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4);
   border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
 }
 .btn {
-  display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 10px; cursor: pointer;
+  display: inline-flex; flex: none; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 10px; cursor: pointer; white-space: nowrap;
   background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); font: 600 12.5px var(--font-ui);
   box-shadow: var(--shadow-s); transition: transform .12s, border-color .12s, color .12s, background .12s;
 }
@@ -377,6 +377,11 @@ html.is-dark .t-moon { display: inline; }
 @media (max-width: 1100px) {
   .hero-in { grid-template-columns: 1fr; }
   .hero-art { display: none; }
+}
+@media (min-width: 961px) and (max-width: 1060px) {
+  /* the sidebar leaves little room for the toolbar: icons only (the tooltips keep the names) */
+  .topbar .btn span { display: none; }
+  .topbar .btn:not(.icon-btn) { width: 34px; padding: 0; justify-content: center; }
 }
 @media (max-width: 960px) {
   .app { grid-template-columns: minmax(0, 1fr); }

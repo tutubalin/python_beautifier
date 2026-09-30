@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from .highlight import Item, Pos, SpanSet, classify, render_items
+from .indexing import Index
+from .indexing import build as build_index
 
 _SHEBANG = re.compile(r"^#!")
 _CODING = re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-\w.]+)")
@@ -70,6 +72,8 @@ class Source:
             tokens, self.lines, soft_keywords=self._soft_keywords, type_spans=self._type_spans
         )
         self._starts: List[Pos] = [it.start for it in self.items]
+        self._ends: Set[Pos] = {it.end for it in self.items}
+        self._index: Optional[Index] = None
         self._rendered: Set[int] = set()
         self._exempt: Set[int] = set()
         self._count: Dict[int, int] = {}
@@ -164,6 +168,21 @@ class Source:
     def _item_index(self, pos: Pos) -> int:
         return bisect_left(self._starts, pos)
 
+    @property
+    def index(self) -> Index:
+        """The decoded NumPy / PyTorch style subscripts of this file (built on first use)."""
+        if self._index is None:
+            try:
+                self._index = build_index(self)
+            except Exception:  # noqa: BLE001 - decoration is optional; never let it break the page
+                self._index = Index()
+        return self._index
+
+    def on_token_boundaries(self, start: Pos, end: Pos) -> bool:
+        """Does a source range begin at a token start and finish at a token end?"""
+        i = self._item_index(start)
+        return i < len(self._starts) and self._starts[i] == start and end in self._ends
+
     def hl(self, start: Pos, end: Pos, dedent: Optional[int] = None) -> str:
         """Highlighted HTML for the source between *start* and *end*."""
         if dedent is None:
@@ -181,7 +200,8 @@ class Source:
                 c = self._comment_at.get(items[k].start)
                 if c:
                     c.used = True
-        return render_items(items[i:j], self.lines, start, end, dedent)
+        wraps = [(w.start, w.end, w.open_tag) for w in self.index.wraps_in(start, end)]
+        return render_items(items[i:j], self.lines, start, end, dedent, wraps)
 
     def hl_node(self, node: ast.AST, dedent: Optional[int] = None) -> str:
         return self.hl(self.start(node), self.end(node), dedent)

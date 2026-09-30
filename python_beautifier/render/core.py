@@ -212,6 +212,13 @@ class Renderer:
         )
 
     def _topbar(self) -> str:
+        # only pages that slice arrays get the button that explains it
+        indexing = (
+            '<button class="btn" id="b-index" type="button" aria-pressed="true" '
+            f'title="Explain NumPy / PyTorch style indexing such as x[:, 1:, ...]">{icon("brackets")}<span>Indexing</span></button>'
+            if self.src.index
+            else ""
+        )
         return (
             '<div class="topbar">'
             f'<button class="btn icon-btn" id="menu" type="button" aria-label="Menu">{icon("menu")}</button>'
@@ -220,6 +227,7 @@ class Renderer:
             f'<button class="btn" id="b-collapse" type="button" title="Collapse every card">{icon("collapse")}<span>Collapse all</span></button>'
             f'<button class="btn" id="b-lines" type="button" aria-pressed="true" title="Toggle line numbers">{icon("hash")}<span>Lines</span></button>'
             f'<button class="btn" id="b-comments" type="button" aria-pressed="true" title="Show or hide comments">{icon("comment")}<span>Comments</span></button>'
+            f"{indexing}"
             f'<button class="btn icon-btn" id="b-theme" type="button" aria-label="Toggle theme" title="Light / dark">{icon("sun", "t-sun")}{icon("moon", "t-moon")}</button>'
             f'<button class="btn icon-btn" id="b-print" type="button" aria-label="Print" title="Print">{icon("file")}</button>'
             "</div>"

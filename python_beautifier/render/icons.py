@@ -35,6 +35,7 @@ ICONS = {
     "play": '<path d="M6 3l14 9-14 9z"/>',
     "map": '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z"/><path d="M8 2v16M16 6v16"/>',
     "infinity": '<path d="M18.2 8c5.1 0 5.1 8 0 8-5.1 0-7.1-8-12.7-8-4.6 0-4.6 8 0 8 5.6 0 7.6-8 12.7-8z"/>',
+    "brackets": '<path d="M8 3H5v18h3M16 3h3v18h-3M12 9v.01M12 15v.01"/>',
     "hash": '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
     "expand": '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>',
     "collapse": '<path d="m7 20 5-5 5 5M7 4l5 5 5-5"/>',

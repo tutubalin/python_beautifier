@@ -25,8 +25,10 @@ from typing import List, Optional, Sequence, Set, Tuple
 from .. import analysis
 from ..docstrings import inline_html
 from ..highlight import fragment
+from ..indexing import Guide
 from ..source import Comment, Source
 from .icons import icon
+from .index import strip as index_strip
 from .util import esc
 
 TRY_TYPES = analysis._TRY_TYPES
@@ -263,7 +265,13 @@ class Flow:
     def _dispatch(self, s: ast.stmt, ctx: Ctx, out: _Out, next_row: int, tail_ok: bool, gap: bool) -> None:
         if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             out.block(self.r.def_card(s, ctx, next_row))
-        elif isinstance(s, ast.If):
+            return
+        if not ctx.top and not self._is_simple(s):
+            # NumPy-style subscripts in a header (``if x[:, 0].any():``): explained right above it
+            strip = index_strip(self._header_guides(s))
+            if strip:
+                out.row(strip)
+        if isinstance(s, ast.If):
             out.block(self.if_stmt(s, ctx, next_row))
         elif isinstance(s, (ast.For, ast.AsyncFor)):
             out.block(self.for_stmt(s, ctx, next_row))
@@ -278,6 +286,21 @@ class Flow:
         else:
             h, w = self.simple(s, ctx, tail_ok=tail_ok, gap=gap)
             out.row(h, w)
+
+    def _is_elif(self, node: ast.If) -> bool:
+        """Was this nested ``If`` written as ``elif`` (and not as ``else:`` followed by an ``if``)?"""
+        return self.src.lines[node.lineno - 1][node.col_offset : node.col_offset + 4] == "elif"
+
+    def _header_guides(self, s: ast.stmt) -> List[Guide]:
+        """Decoded subscripts in the header of *s*; for ``if`` that includes every ``elif`` of its chain."""
+        guides = list(self.src.index.for_statement(s))
+        node = s
+        while isinstance(node, ast.If) and len(node.orelse) == 1 and isinstance(node.orelse[0], ast.If):
+            if not self._is_elif(node.orelse[0]):
+                break
+            node = node.orelse[0]
+            guides += self.src.index.for_statement(node)
+        return guides
 
     # ------------------------------------------------------------------ #
     #  measuring
@@ -463,7 +486,7 @@ class Flow:
             f'<i class="g" data-n="{s.lineno}">{glyph}</i>'
             f'<code class="c">{code}</code>{self.tail_html(tail)}</div>'
         )
-        return html, align
+        return html + index_strip(src.index.for_statement(s)), align
 
     # ------------------------------------------------------------------ #
     #  headers and boxes
@@ -542,11 +565,7 @@ class Flow:
             colon_row, colon_col, tail = self._header_end(src.end(node.test), node.body)
             branches.append(Flow._Branch(kw, node.test, node.body, node.lineno, (colon_row, colon_col), tail))
             orelse = node.orelse
-            if (
-                len(orelse) == 1
-                and isinstance(orelse[0], ast.If)
-                and src.lines[orelse[0].lineno - 1][orelse[0].col_offset : orelse[0].col_offset + 4] == "elif"
-            ):
+            if len(orelse) == 1 and isinstance(orelse[0], ast.If) and self._is_elif(orelse[0]):
                 node = orelse[0]
                 continue
             break

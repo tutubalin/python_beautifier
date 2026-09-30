@@ -53,6 +53,7 @@
   }
   toggleClass($("#b-lines"), "no-lines", true);
   toggleClass($("#b-comments"), "no-comments", true);
+  toggleClass($("#b-index"), "no-index", true);
   if ((b = $("#b-print"))) b.addEventListener("click", function () { setAll(false); window.print(); });
   if ((b = $("#menu"))) b.addEventListener("click", function () { doc.body.classList.toggle("menu-open"); });
   doc.addEventListener("click", function (e) {
@@ -208,6 +209,15 @@
     }, { rootMargin: "-70px 0px -55% 0px", threshold: [0, 0.01] });
     cards.forEach(function (c) { io.observe(c); });
   }
+
+  /* ---- indexing guide: point at a term and its explanation lights up -- */
+  function ixLight(e, on) {
+    var t = e.target.closest && e.target.closest("[data-ix]");
+    if (!t || (e.relatedTarget && t.contains(e.relatedTarget))) return;
+    $$('[data-ix="' + t.getAttribute("data-ix") + '"]').forEach(function (el) { el.classList.toggle("ix-on", on); });
+  }
+  doc.addEventListener("mouseover", function (e) { ixLight(e, true); });
+  doc.addEventListener("mouseout", function (e) { ixLight(e, false); });
 
   /* ---- hover a variable: highlight its uses inside the same card ------- */
   var hasHL = typeof CSS !== "undefined" && CSS.highlights && typeof Highlight !== "undefined";
