@@ -461,14 +461,16 @@ class Cards:
                 )
             else:
                 parts.append(f'<section class="sec sec-doc">{inner}</section>')
+        schema = self.r.neural_schemas.get(id(node))
         if is_cls:
-            schema = self.r.neural_schemas.get(id(node))
             if schema is not None:
                 parts.append(render_neural(schema))
             parts.append(self.attrs_table(d))
             parts.append(self.methods_table(d))
         else:
             parts.append(self.params_table(d))
+            if schema is not None:
+                parts.append(render_neural(schema))
             parts.append(self.io_strip(d))
             parts.append(self.touches(d))
         parts.append(self.insights(d, body_stmts))

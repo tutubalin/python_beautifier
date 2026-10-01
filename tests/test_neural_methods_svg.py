@@ -131,6 +131,91 @@ def test_merge_schema_svg_marks_a_skip_connection():
     assert 'role="img"' in html and "INPUT" in html and "OUTPUT" in html
 
 
+def test_modulelist_comprehension_and_custom_non_forward_method_calls_remain_visible():
+    code = '''
+from torch import nn
+class Block(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj = nn.Linear(4, 4)
+    def forward_kv_extract(self, x, cache):
+        return self.proj(x), cache
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.blocks = nn.ModuleList([Block() for _ in range(3)])
+    def forward(self, x, cache):
+        for i, block in enumerate(self.blocks):
+            x, cache = block.forward_kv_extract(x, cache)
+        return x
+'''
+    schemas = analyze(Source(code))
+    schema = next(item for item in schemas.values() if item.name == "Net")
+    block_calls = [step for step in schema.steps if "blocks[*].forward_kv_extract" in step.name]
+    assert len(block_calls) == 1  # one representative iteration, not three fabricated copies
+    assert block_calls[0].kind == "Block"
+    assert block_calls[0].out_shape == ("…", "?")
+    assert any("multiple outputs are not separated" in note for note in schema.notes)
+    assert any("shown once" in note for note in schema.notes)
+
+
+def test_nested_custom_module_attributes_are_detected_and_traced():
+    code = '''
+from torch import nn
+class Holder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj = nn.Linear(8, 4)
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.holder = Holder()
+    def encode(self, x):
+        return self.holder.proj(x)
+'''
+    schemas = analyze(Source(code))
+    schema = next(item for item in schemas.values() if item.name == "Net")
+    assert [route.method_name for route in schema.routes] == ["encode"]
+    assert [(step.name, step.kind) for step in schema.steps] == [("holder.proj", "Linear")]
+    assert schema.output_shapes == [("…", "4")]
+
+
+def test_docstring_layout_labels_are_not_misread_as_tensor_dimensions():
+    code = '''
+from torch import nn
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj = nn.Linear(4, 4)
+    def forward_kv_extract(self, img):
+        """img has layout [ref, img], not a literal tensor shape."""
+        return self.proj(img)
+'''
+    schema = _schema(code)
+    assert schema.input_shape == ("…", "4")
+    assert schema.output_shapes == [("…", "4")]
+
+
+def test_functional_normalization_is_detected_from_contents_and_stays_shape_preserving():
+    code = '''
+import torch
+from torch import nn
+class RMSNorm(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.scale = nn.Parameter(torch.ones(dim))
+    def forward(self, x: Tensor[B, T, D]):
+        rms = torch.rsqrt(torch.mean(x ** 2, dim=-1, keepdim=True) + 1e-6)
+        return x * rms * self.scale
+'''
+    schemas = analyze(Source(code))
+    schema = next(item for item in schemas.values() if item.name == "RMSNorm")
+    assert [step.kind for step in schema.steps] == ["Mean", "Rsqrt"]
+    assert schema.input_shape == ("B", "T", "D")
+    assert schema.output_shapes == [("B", "T", "D")]
+    assert not any("Declared modules not observed" in note for note in schema.notes)
+
+
 def test_example_documents_nonstandard_entrypoints():
     from pathlib import Path
 

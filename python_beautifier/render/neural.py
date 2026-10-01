@@ -12,6 +12,7 @@ _DETECTION = {
     "pytorch": "PyTorch module",
     "inherited": "inherits local module",
     "lookalike": "module-like pattern",
+    "factory": "sequential factory",
 }
 
 _SVG_W = 1040
@@ -123,7 +124,8 @@ def _svg(route: Route, uid: str) -> str:
 def _route(route: Route, uid: str) -> str:
     names = {s.ident: s.name for s in route.steps}
     count = f'{len(route.steps)} layer step' if len(route.steps) == 1 else f'{len(route.steps)} layer steps'
-    heading = f'<h5 class="nn-route-title"><code>{esc(route.method_name)}()</code><span>{count}</span></h5>'
+    suffix = "()" if route.kind == "method" else ""
+    heading = f'<h5 class="nn-route-title"><code>{esc(route.method_name)}{suffix}</code><span>{count}</span></h5>'
     svg = _svg(route, uid)
     detailed = "".join(_step(step, names) for step in route.steps)
     outputs = "".join(
@@ -146,11 +148,11 @@ def render(schema: Schema) -> str:
     """HTML block with an inline SVG and an optional text-first trace for each execution method."""
     detection = _DETECTION.get(schema.detection, "static inference")
     status = f'<span class="nn-detect" title="{attr(schema.reason)}">{icon("layers")}<b>{esc(detection)}</b></span>'
-    routes = schema.routes or [Route(schema.method_name, schema.input_name, schema.input_shape, schema.steps, schema.output_shapes, schema.notes)]
+    routes = schema.routes or ([Route(schema.method_name, schema.input_name, schema.input_shape, schema.steps, schema.output_shapes, schema.notes)] if schema.steps else [])
     total_steps = sum(len(r.steps) for r in routes)
-    summary = f'<span class="nn-count">{len(routes)} execution {"paths" if len(routes) != 1 else "path"} · {total_steps} layer steps</span>' if total_steps else '<span class="nn-count">no traced layer calls</span>'
+    summary = f'<span class="nn-count">{len(routes)} execution {"paths" if len(routes) != 1 else "path"} · {total_steps} layer steps</span>' if total_steps else '<span class="nn-count">no traceable path</span>'
     path_html = "".join(_route(route, f"nn-{i}-{re.sub(r'[^a-zA-Z0-9_-]', '-', schema.name)}") for i, route in enumerate(routes))
-    empty_notes = "".join(f'<li>{esc(note)}</li>' for note in schema.notes) if not routes[0].steps else ""
+    empty_notes = "".join(f'<li>{esc(note)}</li>' for note in schema.notes) if not routes else ""
     note_html = f'<ul class="nn-notes">{empty_notes}</ul>' if empty_notes else ""
     return (
         f'<section class="sec nn-schema" aria-label="Static neural network schema for {attr(schema.name)}">'

@@ -8,6 +8,7 @@ syntax already parsed by :class:`Source`: imported base aliases, local inheritan
 from __future__ import annotations
 
 import ast
+import copy
 import math
 import re
 from dataclasses import dataclass, field
@@ -28,6 +29,7 @@ _PRESERVE = {
     "AdaptiveAvgPool2d", "AdaptiveAvgPool3d", "AdaptiveMaxPool1d", "AdaptiveMaxPool2d", "AdaptiveMaxPool3d",
     "Upsample", "Embedding", "EmbeddingBag", "MultiheadAttention", "TransformerEncoderLayer",
     "TransformerDecoderLayer", "RNN", "LSTM", "GRU", "RNNCell", "LSTMCell", "GRUCell",
+    "RMSNorm", "QKNorm",
 }
 _LAYER_RE = re.compile(r"^(?:Linear|Bilinear|Conv(?:Transpose)?[1-3]d|LazyLinear|LazyConv[1-3]d)$")
 _ARRAY_LIBRARIES = {"torch", "tensorflow", "keras", "jax"}
@@ -43,6 +45,8 @@ class Spec:
     shown_params: str = ""
     children: List["Spec"] = field(default_factory=list)
     custom: bool = False
+    line: int = 0
+    condition: Optional[str] = None
 
 
 @dataclass
@@ -70,6 +74,7 @@ class Route:
     steps: List[Step]
     output_shapes: List[Shape]
     notes: List[str]
+    kind: str = "method"  # method | factory | attribute
 
 
 @dataclass
@@ -206,7 +211,7 @@ def _inherited_method(
     return None
 
 
-def _inherited_specs(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], nn: Set[str], layers: Set[str], called: Set[str], imported: Set[str], seen: Optional[Set[str]] = None) -> Dict[str, Spec]:
+def _inherited_specs(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], nn: Set[str], layers: Set[str], called: Set[str], imported: Set[str], factories: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef], seen: Optional[Set[str]] = None) -> Dict[str, Spec]:
     seen = set() if seen is None else seen
     out: Dict[str, Spec] = {}
     for base in node.bases:
@@ -215,19 +220,24 @@ def _inherited_specs(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], nn: S
         if parent is None or key in seen:
             continue
         seen.add(key)
-        out.update(_inherited_specs(parent, classes, nn, layers, called, imported, seen))
-        out.update(_declared(parent, nn, layers, classes, called, imported))
+        out.update(_inherited_specs(parent, classes, nn, layers, called, imported, factories, seen))
+        out.update(_declared(parent, nn, layers, classes, called, imported, factories))
     return out
 
 
 def _self_attr(node: ast.AST) -> Optional[str]:
-    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id in ("self", "cls"):
-        return node.attr
-    if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Attribute) and isinstance(node.value.value, ast.Name) and node.value.value.id == "self":
-        idx = node.slice
-        if isinstance(idx, ast.Constant):
-            return f"{node.value.attr}.{idx.value}"
-        return node.value.attr
+    if isinstance(node, ast.Attribute):
+        if isinstance(node.value, ast.Name) and node.value.id in ("self", "cls"):
+            return node.attr
+        parent = _self_attr(node.value)
+        return f"{parent}.{node.attr}" if parent else None
+    if isinstance(node, ast.Subscript):
+        parent = _self_attr(node.value)
+        if parent:
+            index = node.slice
+            if isinstance(index, ast.Constant):
+                return f"{parent}.{index.value}"
+            return parent
     return None
 
 
@@ -289,6 +299,8 @@ def _args(call: ast.Call, kind: Optional[str] = None) -> Dict[str, object]:
         "AdaptiveMaxPool1d": ("output_size",), "AdaptiveMaxPool2d": ("output_size",), "AdaptiveMaxPool3d": ("output_size",),
         "Flatten": ("start_dim", "end_dim"), "Dropout": ("p",), "ReLU": ("inplace",),
         "GroupNorm": ("num_groups", "num_channels"), "MultiheadAttention": ("embed_dim", "num_heads"),
+        "Upsample": ("size", "scale_factor", "mode", "align_corners"),
+        "PixelShuffle": ("upscale_factor",), "PixelUnshuffle": ("downscale_factor",),
     }
     params = names.get(kind or _tail(_dotted(call.func)), ())
     for i, arg in enumerate(call.args):
@@ -310,17 +322,128 @@ def _show_args(values: Dict[str, object]) -> str:
     return ", ".join(out)
 
 
-def _make_spec(expr: ast.AST, name: str, nn: Set[str], layer_aliases: Dict[str, str], local: Dict[str, ast.ClassDef]) -> Optional[Spec]:
+def _function_return(fn: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda) -> Optional[ast.AST]:
+    """Return expression of a simple factory; never execute the function."""
+    if isinstance(fn, ast.Lambda):
+        return fn.body
+    for stmt in fn.body:
+        if isinstance(stmt, ast.Return):
+            return stmt.value
+    return None
+
+
+def _expand_factory(call: ast.Call, fn: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda) -> Optional[ast.AST]:
+    """Substitute the literal/source arguments into a simple factory's return expression."""
+    returned = _function_return(fn)
+    if returned is None:
+        return None
+    params = fn.args.posonlyargs + fn.args.args if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) else fn.args.posonlyargs + fn.args.args
+    defaults = [None] * (len(params) - len(fn.args.defaults)) + list(fn.args.defaults)
+    bindings: Dict[str, ast.AST] = {}
+    for i, param in enumerate(params):
+        if param.arg in ("self", "cls"):
+            continue
+        if i < len(call.args):
+            bindings[param.arg] = call.args[i]
+        elif any(k.arg == param.arg for k in call.keywords):
+            bindings[param.arg] = next(k.value for k in call.keywords if k.arg == param.arg)
+        elif defaults[i] is not None:
+            bindings[param.arg] = defaults[i]
+    extra_keywords = [k for k in call.keywords if k.arg is not None and k.arg not in {p.arg for p in params}]
+    packed: Dict[str, List[ast.keyword]] = {}
+    if fn.args.kwarg:
+        packed[fn.args.kwarg.arg] = extra_keywords
+    if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        for stmt in fn.body:
+            if isinstance(stmt, ast.Assign) and isinstance(stmt.value, ast.Call) and _tail(_dotted(stmt.value.func)) == "dict":
+                for target in stmt.targets:
+                    if isinstance(target, ast.Name):
+                        packed[target.id] = [
+                            ast.keyword(k.arg, copy.deepcopy(k.value))
+                            for k in stmt.value.keywords if k.arg
+                        ]
+
+    class Substitute(ast.NodeTransformer):
+        def visit_Name(self, node: ast.Name):
+            replacement = bindings.get(node.id)
+            return ast.copy_location(copy.deepcopy(replacement), node) if replacement is not None else node
+
+        def visit_Call(self, node: ast.Call):
+            node.func = self.visit(node.func)
+            node.args = [self.visit(a) for a in node.args]
+            kws: List[ast.keyword] = []
+            for kw in node.keywords:
+                if kw.arg is None and isinstance(kw.value, ast.Name) and kw.value.id in packed:
+                    kws.extend(ast.keyword(k.arg, self.visit(k.value)) for k in packed[kw.value.id])
+                else:
+                    kws.append(ast.keyword(kw.arg, self.visit(kw.value)))
+            node.keywords = kws
+            return node
+
+    return ast.fix_missing_locations(Substitute().visit(copy.deepcopy(returned)))
+
+
+def _make_spec(
+    expr: ast.AST,
+    name: str,
+    nn: Set[str],
+    layer_aliases: Dict[str, str],
+    local: Dict[str, ast.ClassDef],
+    factories: Optional[Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]] = None,
+    seen_factories: Optional[Set[str]] = None,
+) -> Optional[Spec]:
+    if isinstance(expr, ast.IfExp):
+        left = _make_spec(expr.body, name, nn, layer_aliases, local, factories, seen_factories)
+        right = _make_spec(expr.orelse, name, nn, layer_aliases, local, factories, seen_factories)
+        if left or right:
+            out_channels = (left.params.get("out_channels") if left else None) or (right.params.get("out_channels") if right else None)
+            params = {"condition": ast.unparse(expr.test)}
+            if out_channels is not None:
+                params["out_channels"] = out_channels
+            alternatives = " or ".join(spec.kind if spec else "non-module" for spec in (left, right))
+            children = [spec for spec in (left, right) if spec is not None]
+            return Spec("Conditional layer", name, params, alternatives, children, custom=True, line=getattr(expr, "lineno", 0))
+        return None
     if not isinstance(expr, ast.Call):
         return None
     called = _dotted(expr.func)
+    tail = _tail(called)
+    factories = factories or {}
+    seen_factories = set() if seen_factories is None else seen_factories
+    if tail in factories and tail not in seen_factories:
+        expanded = _expand_factory(expr, factories[tail])
+        if expanded is not None:
+            return _make_spec(expanded, name, nn, layer_aliases, local, factories, seen_factories | {tail})
     kind = _known_class_kind(called, nn, layer_aliases)
-    if kind is None and _tail(called) in local:
-        kind = _tail(called)
-        return Spec(kind, name, shown_params="custom module", custom=True)
+    if kind is None and tail in local:
+        kind = tail
+        params: Dict[str, object] = {}
+        init = _class_method(local[kind], "__init__")
+        if init:
+            formals = [a.arg for a in init.args.posonlyargs + init.args.args if a.arg not in ("self", "cls")]
+            for formal, arg in zip(formals, expr.args):
+                params[formal] = _literal_or_text(arg)
+            for kw in expr.keywords:
+                if kw.arg:
+                    params[kw.arg] = _literal_or_text(kw.value)
+            defaults = [None] * (len(formals) - len(init.args.defaults)) + list(init.args.defaults)
+            for formal, default in zip(formals, defaults):
+                if formal not in params and default is not None:
+                    params[formal] = _literal_or_text(default)
+            # Keep familiar channel names for common module signatures.
+            if "n_in" in params:
+                params["in_channels"] = params["n_in"]
+            if "n_out" in params:
+                params["out_channels"] = params["n_out"]
+            if "in_channels" in params:
+                params.setdefault("in_channels", params["in_channels"])
+            if "out_channels" in params:
+                params.setdefault("out_channels", params["out_channels"])
+        shown = "custom module" + (f" (out_channels={params['out_channels']})" if "out_channels" in params else "")
+        return Spec(kind, name, params, shown, custom=True, line=getattr(expr, "lineno", 0))
     if kind is None and (_LAYER_RE.match(_tail(called)) or _tail(called) in _PRESERVE or _tail(called) == "Flatten"):
         kind = _tail(called)
-        return Spec(kind, name, _args(expr), _show_args(_args(expr)), custom=True)
+        return Spec(kind, name, _args(expr), _show_args(_args(expr)), custom=True, line=getattr(expr, "lineno", 0))
     if kind is None:
         return None
     params = _args(expr, kind)
@@ -331,17 +454,17 @@ def _make_spec(expr: ast.AST, name: str, nn: Set[str], layer_aliases: Dict[str, 
                 pairs = zip(arg.keys, arg.values)
                 for key, child in pairs:
                     key_name = str(_literal(key) if _literal(key) is not None else len(children))
-                    spec = _make_spec(child, f"{name}.{key_name}", nn, layer_aliases, local)
+                    spec = _make_spec(child, f"{name}.{key_name}", nn, layer_aliases, local, factories, seen_factories)
                     if spec:
                         children.append(spec)
                 continue
-            items = list(arg.elts) if isinstance(arg, (ast.List, ast.Tuple)) else [arg]
+            items = list(arg.elts) if isinstance(arg, (ast.List, ast.Tuple)) else [arg.elt] if isinstance(arg, ast.ListComp) else [arg]
             for child in items:
-                spec = _make_spec(child, f"{name}.{len(children)}", nn, layer_aliases, local)
+                spec = _make_spec(child, f"{name}.{len(children)}", nn, layer_aliases, local, factories, seen_factories)
                 if spec:
                     children.append(spec)
-        return Spec(kind, name, params, _show_args(params), children)
-    return Spec(kind, name, params, _show_args(params), custom=False)
+        return Spec(kind, name, params, _show_args(params), children, line=getattr(expr, "lineno", 0))
+    return Spec(kind, name, params, _show_args(params), custom=False, line=getattr(expr, "lineno", 0))
 
 
 def _called_self_attrs(method: Optional[ast.FunctionDef | ast.AsyncFunctionDef]) -> Set[str]:
@@ -350,14 +473,186 @@ def _called_self_attrs(method: Optional[ast.FunctionDef | ast.AsyncFunctionDef])
     return {name for call in ast.walk(method) if isinstance(call, ast.Call) and (name := _self_attr(call.func))}
 
 
-def _declared(node: ast.ClassDef, nn: Set[str], layer_aliases: Dict[str, str], local: Dict[str, ast.ClassDef], called: Optional[Set[str]] = None, imported: Optional[Set[str]] = None) -> Dict[str, Spec]:
+def _conditional_contexts(method: ast.FunctionDef | ast.AsyncFunctionDef) -> Dict[int, str]:
+    """Map assignments nested in simple branches to the branch condition."""
+    contexts: Dict[int, str] = {}
+
+    def visit(stmts: Sequence[ast.stmt], conditions: Sequence[str]) -> None:
+        for stmt in stmts:
+            if conditions and isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+                contexts[id(stmt)] = " and ".join(conditions)
+            if isinstance(stmt, ast.If):
+                test = ast.unparse(stmt.test)
+                visit(stmt.body, (*conditions, test))
+                visit(stmt.orelse, (*conditions, f"not ({test})"))
+            else:
+                for child in ast.iter_child_nodes(stmt):
+                    if isinstance(child, ast.stmt):
+                        visit([child], conditions)
+                    elif isinstance(child, list):
+                        visit([item for item in child if isinstance(item, ast.stmt)], conditions)
+    visit(method.body, ())
+    return contexts
+
+
+def _safe_eval(node: ast.AST, values: Dict[str, object]) -> object:
+    """Evaluate a small, side-effect-free expression subset for static parameter choices."""
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.Name):
+        return values.get(node.id, _UNKNOWN)
+    if isinstance(node, (ast.Tuple, ast.List)):
+        items = [_safe_eval(item, values) for item in node.elts]
+        return _UNKNOWN if _UNKNOWN in items else tuple(items)
+    if isinstance(node, ast.UnaryOp):
+        value = _safe_eval(node.operand, values)
+        if value is _UNKNOWN:
+            return _UNKNOWN
+        if isinstance(node.op, ast.Not): return not value
+        if isinstance(node.op, ast.USub) and isinstance(value, (int, float)): return -value
+        if isinstance(node.op, ast.UAdd) and isinstance(value, (int, float)): return value
+    if isinstance(node, ast.BinOp):
+        left, right = _safe_eval(node.left, values), _safe_eval(node.right, values)
+        if left is _UNKNOWN or right is _UNKNOWN or not isinstance(left, (int, float)) or not isinstance(right, (int, float)): return _UNKNOWN
+        try:
+            if isinstance(node.op, ast.Add): return left + right
+            if isinstance(node.op, ast.Sub): return left - right
+            if isinstance(node.op, ast.Mult): return left * right
+            if isinstance(node.op, ast.FloorDiv): return left // right
+            if isinstance(node.op, ast.Div): return left / right
+        except (TypeError, ArithmeticError):
+            return _UNKNOWN
+    if isinstance(node, ast.Compare) and len(node.ops) == len(node.comparators) == 1:
+        left, right = _safe_eval(node.left, values), _safe_eval(node.comparators[0], values)
+        if left is _UNKNOWN or right is _UNKNOWN: return _UNKNOWN
+        op = node.ops[0]
+        try:
+            if isinstance(op, ast.Eq): return left == right
+            if isinstance(op, ast.NotEq): return left != right
+            if isinstance(op, ast.Lt): return left < right
+            if isinstance(op, ast.LtE): return left <= right
+            if isinstance(op, ast.Gt): return left > right
+            if isinstance(op, ast.GtE): return left >= right
+            if isinstance(op, ast.In): return left in right
+            if isinstance(op, ast.NotIn): return left not in right
+        except (TypeError, ValueError):
+            return _UNKNOWN
+    if isinstance(node, ast.BoolOp):
+        vals = [_safe_eval(v, values) for v in node.values]
+        if _UNKNOWN in vals: return _UNKNOWN
+        return all(vals) if isinstance(node.op, ast.And) else any(vals)
+    return _UNKNOWN
+
+
+class _Unknown:
+    pass
+
+
+_UNKNOWN = _Unknown()
+
+
+def _static_value(expression: str, values: Dict[str, object]) -> object:
+    try:
+        return _safe_eval(ast.parse(expression, mode="eval").body, values)
+    except (SyntaxError, ValueError):
+        return _UNKNOWN
+
+
+def _substitute_expression(expression: str, values: Dict[str, object]) -> str:
+    """Resolve constructor aliases inside symbolic expressions without evaluating user code."""
+    try:
+        tree = ast.parse(expression, mode="eval")
+    except SyntaxError:
+        return expression
+
+    class ReplaceNames(ast.NodeTransformer):
+        def visit_Name(self, node: ast.Name):
+            if node.id not in values:
+                return node
+            value = values[node.id]
+            if isinstance(value, bool):
+                replacement: ast.AST = ast.Constant(value=value)
+            elif isinstance(value, (int, float)):
+                replacement = ast.Constant(value=value)
+            elif isinstance(value, str):
+                try:
+                    replacement = ast.parse(value, mode="eval").body
+                except SyntaxError:
+                    return node
+            else:
+                return node
+            return ast.copy_location(replacement, node)
+
+    try:
+        return ast.unparse(ast.fix_missing_locations(ReplaceNames().visit(tree)))
+    except (ValueError, TypeError):
+        return expression
+
+
+def _specialize_spec(spec: Spec, values: Dict[str, object]) -> Optional[Spec]:
+    """Resolve constructor parameters/conditional branches without executing model code."""
+    if spec.condition:
+        active = _static_value(spec.condition, values)
+        if active is False:
+            return None
+    params: Dict[str, object] = {}
+    for key, value in spec.params.items():
+        if key == "condition":
+            params[key] = value
+        elif isinstance(value, str):
+            resolved = _static_value(value, values)
+            params[key] = _substitute_expression(value, values) if resolved is _UNKNOWN else resolved
+        else:
+            params[key] = value
+    if spec.kind == "Conditional layer" and len(spec.children) >= 2:
+        active = _static_value(str(params.get("condition", "")), values)
+        if isinstance(active, bool):
+            selected = spec.children[0 if active else 1]
+            return _specialize_spec(selected, values)
+    children = [resolved for child in spec.children if (resolved := _specialize_spec(child, values)) is not None]
+    shown = spec.shown_params
+    if spec.kind == "Conditional layer":
+        shown = "conditional: " + shown
+    elif spec.custom:
+        shown = "custom module" + (f" (out_channels={params['out_channels']})" if params.get("out_channels") is not None else "")
+    elif params:
+        shown = _show_args(params)
+    return Spec(spec.kind, spec.name, params, shown, children, spec.custom, spec.line, spec.condition)
+
+
+def _declared(node: ast.ClassDef, nn: Set[str], layer_aliases: Dict[str, str], local: Dict[str, ast.ClassDef], called: Optional[Set[str]] = None, imported: Optional[Set[str]] = None, factories: Optional[Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]] = None) -> Dict[str, Spec]:
     init = _class_method(node, "__init__")
     specs: Dict[str, Spec] = {}
     called = called or set()
     imported = imported or set()
     if init is None:
         return specs
+    conditional_contexts = _conditional_contexts(init)
     statements = sorted(analysis.walk_scope(init), key=lambda n: (getattr(n, "lineno", 0), getattr(n, "col_offset", 0)))
+    factory_scope = dict(factories or {})
+    formal_names = {arg.arg for arg in init.args.posonlyargs + init.args.args + init.args.kwonlyargs}
+    local_values: Dict[str, ast.AST] = {}
+    for stmt in statements:
+        if not isinstance(stmt, ast.Assign):
+            continue
+        pairs: List[Tuple[ast.AST, ast.AST]] = []
+        if len(stmt.targets) == 1 and isinstance(stmt.targets[0], (ast.Tuple, ast.List)) and isinstance(stmt.value, (ast.Tuple, ast.List)):
+            pairs = list(zip(stmt.targets[0].elts, stmt.value.elts))
+        else:
+            pairs = [(target, stmt.value) for target in stmt.targets]
+        for target, value in pairs:
+            if isinstance(target, ast.Name):
+                if isinstance(value, ast.Lambda):
+                    factory_scope[target.id] = value
+                elif target.id not in formal_names and not _self_attr(target):
+                    local_values[target.id] = value
+
+    class LocalSubstitute(ast.NodeTransformer):
+        def visit_Name(self, node: ast.Name):
+            if node.id in local_values:
+                return ast.copy_location(copy.deepcopy(local_values[node.id]), node)
+            return node
+
     for stmt in statements:
         value: Optional[ast.AST] = None
         target: Optional[ast.AST] = None
@@ -370,7 +665,8 @@ def _declared(node: ast.ClassDef, nn: Set[str], layer_aliases: Dict[str, str], l
             continue
         for target in targets:
             name = _self_attr(target)
-            spec = _make_spec(value, name or "", nn, layer_aliases, local)
+            expanded_value = ast.fix_missing_locations(LocalSubstitute().visit(copy.deepcopy(value))) if value is not None and local_values else value
+            spec = _make_spec(expanded_value, name or "", nn, layer_aliases, local, factory_scope)
             if name and spec is None and name in called and isinstance(value, ast.Call):
                 # Only treat an opaque constructor as a custom module when its class is defined
                 # locally and has a forward body. Arbitrary callable attributes (e.g. object())
@@ -382,6 +678,12 @@ def _declared(node: ast.ClassDef, nn: Set[str], layer_aliases: Dict[str, str], l
                 if local_module or imported_module:
                     spec = Spec(kind, name, shown_params="custom module", custom=True)
             if name and spec:
+                condition = conditional_contexts.get(id(stmt))
+                # Keep an unconditional constructor assignment as the primary static path;
+                # record a conditional reassignment only when no baseline exists.
+                if condition and name in specs:
+                    continue
+                spec.condition = condition
                 specs[name] = spec
     return specs
 
@@ -398,7 +700,7 @@ def _shape_hint(method: ast.FunctionDef | ast.AsyncFunctionDef, src: Source, inp
             if shape:
                 return shape
     doc = ast.get_docstring(method) or ""
-    pattern = re.compile(rf"\b{re.escape(input_name)}\b[^\n]*?(?:shape\s*)?[\(\[]([^()\[\]]{{1,100}})[\)\]]", re.I)
+    pattern = re.compile(rf"\b{re.escape(input_name)}\b[^\n]*?\bshape\b\s*(?:is\s*|=\s*)?`{{0,2}}[\(\[]([^()\[\]]{{1,100}})[\)\]]", re.I)
     match = pattern.search(doc)
     if match:
         dims = [p.strip() for p in match.group(1).split(",") if p.strip()]
@@ -424,13 +726,32 @@ def _conv_out(dim: str, k: int, s: int, p: int, d: int, ceil: bool = False, padd
         return str((math.ceil if ceil else math.floor)(numerator / s) + 1)
     if padding == "same":
         return dim if s == 1 else f"ceil({dim}/{s})"
-    if s == 1 and 2 * p == d * (k - 1):
-        return dim
-    stem = re.sub(r"out\d*$", "", dim)
-    return f"{stem}out"
+    if 2 * p == d * (k - 1):
+        if s == 1:
+            return dim
+        symbolic = re.fullmatch(r"ceil\((.+)/(\d+)\)", dim)
+        fractional = re.fullmatch(r"(.+)/(\d+)", dim)
+        if symbolic or fractional:
+            base, divisor = (symbolic or fractional).groups()
+            return f"ceil({base}/{int(divisor) * s})"
+        return f"ceil({dim}/{s})"
+    match = re.fullmatch(r"(.*)out(\d*)", dim)
+    stem, prior = (match.group(1), match.group(2)) if match else (dim, "")
+    ordinal = int(prior or "1") + 1 if match else 1
+    return f"{stem}out{ordinal if ordinal > 1 else ''}"
 
 
 def _shape_after(kind: str, p: Dict[str, object], shape: Shape) -> Shape:
+    if kind in ("Block", "Conditional layer"):
+        channels = p.get("out_channels")
+        if channels is not None and len(shape) >= 3:
+            idx = len(shape) - 3
+            dims = list(shape)
+            # A conditional projection either maps to out_channels or is Identity only
+            # when in_channels == out_channels, so both branches have this channel count.
+            dims[idx] = str(channels)
+            return tuple(dims)
+        return shape
     if kind in ("Linear", "LazyLinear", "Bilinear"):
         out = p.get("out_features")
         if out is None:
@@ -476,7 +797,46 @@ def _shape_after(kind: str, p: Dict[str, object], shape: Shape) -> Shape:
                 else:
                     dims[dim_idx] = _conv_out(dims[dim_idx], ks[i], ss[i], ps[i], ds[i], bool(p.get("ceil_mode", False)), p.get("padding"))
         return tuple(dims)
-    if kind in ("BatchNorm1d", "BatchNorm2d", "BatchNorm3d", "SyncBatchNorm", "LayerNorm", "GroupNorm", "InstanceNorm1d", "InstanceNorm2d", "InstanceNorm3d", "ReLU", "ReLU6", "GELU", "Sigmoid", "Tanh", "Softmax", "LogSoftmax", "Dropout", "Dropout1d", "Dropout2d", "Dropout3d", "Identity", "ELU", "LeakyReLU", "SiLU", "Mish", "PReLU", "Hardtanh", "Hardswish", "Hardsigmoid"):
+    if kind == "Upsample":
+        scale = p.get("scale_factor")
+        size = p.get("size")
+        rank = max(0, len(shape) - 2)
+        if isinstance(size, int) and rank == 1:
+            return shape[:-1] + (str(size),)
+        if isinstance(size, (tuple, list)) and len(size) == rank:
+            return shape[:-rank] + tuple(str(v) for v in size)
+        scales = _dim_tuple(scale, rank, 1) if scale is not None else (1,) * rank
+        if rank:
+            dims = list(shape)
+            for i, factor in enumerate(scales):
+                index = len(dims) - rank + i
+                if dims[index].isdigit():
+                    dims[index] = str(int(dims[index]) * factor)
+                elif factor != 1:
+                    prior = re.fullmatch(r"(.+)×(\d+)", dims[index])
+                    dims[index] = f"{prior.group(1)}×{int(prior.group(2)) * factor}" if prior else f"{dims[index]}×{factor}"
+            return tuple(dims)
+        return shape
+    if kind in ("PixelShuffle", "PixelUnshuffle") and len(shape) >= 3:
+        factor = p.get("upscale_factor", p.get("downscale_factor", 1))
+        if isinstance(factor, int) and factor > 0:
+            dims = list(shape)
+            if kind == "PixelShuffle":
+                channels = dims[-3]
+                dims[-3] = str(int(channels) // (factor * factor)) if channels.isdigit() else f"{channels}/{factor * factor}"
+                for i in (-2, -1):
+                    if dims[i].isdigit():
+                        dims[i] = str(int(dims[i]) * factor)
+                    else:
+                        prior = re.fullmatch(r"(.+)×(\d+)", dims[i])
+                        dims[i] = f"{prior.group(1)}×{int(prior.group(2)) * factor}" if prior else f"{dims[i]}×{factor}"
+            else:
+                channels = dims[-3]
+                dims[-3] = str(int(channels) * factor * factor) if channels.isdigit() else f"{channels}×{factor * factor}"
+                for i in (-2, -1):
+                    dims[i] = str(int(dims[i]) // factor) if dims[i].isdigit() else f"{dims[i]}/{factor}"
+            return tuple(dims)
+    if kind in ("BatchNorm1d", "BatchNorm2d", "BatchNorm3d", "SyncBatchNorm", "LayerNorm", "GroupNorm", "RMSNorm", "QKNorm", "InstanceNorm1d", "InstanceNorm2d", "InstanceNorm3d", "ReLU", "ReLU6", "GELU", "Sigmoid", "Tanh", "Softmax", "LogSoftmax", "Dropout", "Dropout1d", "Dropout2d", "Dropout3d", "Identity", "ELU", "LeakyReLU", "SiLU", "Mish", "PReLU", "Hardtanh", "Hardswish", "Hardsigmoid"):
         return shape
     if kind.startswith("Adaptive") and "Pool" in kind:
         out_size = p.get("output_size")
@@ -505,10 +865,18 @@ class _Tracer:
         input_name: str,
         initial: Shape,
         methods: Optional[Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]] = None,
+        classes: Optional[Dict[str, ast.ClassDef]] = None,
+        class_methods: Optional[Dict[str, Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]]] = None,
+        class_specs: Optional[Dict[str, Dict[str, Spec]]] = None,
     ):
         self.src = src
         self.specs = specs
         self.methods = methods or {}
+        self.classes = classes or {}
+        self.class_methods = class_methods or {}
+        self.class_specs = class_specs or {}
+        self.instance_params: Dict[str, object] = {}
+        self.known_null_attrs: Set[str] = set()
         self.inline_stack: List[str] = []
         self.return_values: List[_Value] = []
         self.input_name = input_name
@@ -518,6 +886,7 @@ class _Tracer:
         self.serial = 0
         self.used: Set[str] = set()
         self.loop_specs: Dict[str, List[Spec]] = {}
+        self.loop_modules: Dict[str, Spec] = {}
 
     def _id(self, base: str) -> str:
         self.serial += 1
@@ -526,20 +895,33 @@ class _Tracer:
     def _spec_for(self, name: str) -> Optional[Spec]:
         if name in self.specs:
             return self.specs[name]
-        head, dot, tail = name.partition(".")
-        parent = self.specs.get(head)
-        if parent and dot and tail.isdigit() and int(tail) < len(parent.children):
-            return parent.children[int(tail)]
-        if parent and dot:
-            return next((c for c in parent.children if c.name.rsplit(".", 1)[-1] == tail), None)
-        return None
+        parts = name.split(".")
+        current = self.specs.get(parts[0])
+        prefix = parts[0]
+        if current is None:
+            return None
+        for part in parts[1:]:
+            child: Optional[Spec] = None
+            if part.isdigit() and int(part) < len(current.children):
+                child = current.children[int(part)]
+            elif current.children:
+                child = next((item for item in current.children if item.name.rsplit(".", 1)[-1] == part), None)
+            if child is None and current.custom:
+                declared = self.class_specs.get(current.kind, {}).get(part)
+                if declared is not None:
+                    child = _specialize_spec(declared, current.params)
+            if child is None:
+                return None
+            prefix += "." + part
+            current = Spec(child.kind, prefix, dict(child.params), child.shown_params, list(child.children), child.custom, child.line, child.condition)
+        return current
 
     def _add(self, spec: Spec, value: _Value, line: int = 0) -> _Value:
         ident = self._id(spec.name)
         shape = _shape_after(spec.kind, spec.params, value.shape)
         known_layer = bool(_LAYER_RE.match(spec.kind) or spec.kind in _PRESERVE or spec.kind in ("Flatten", "Sequential", "ModuleList", "ModuleDict"))
-        if spec.custom and not known_layer:
-            shape = ("…", "?")  # a custom block's output rank/size is unknown without opening its implementation
+        if spec.custom and not known_layer and spec.kind not in ("Block", "Conditional layer"):
+            shape = ("…", "?")  # an opaque custom block's output rank/size is unknown without opening its implementation
         expected = spec.params.get("in_features")
         if spec.kind in ("Linear", "LazyLinear") and isinstance(expected, int) and value.shape and value.shape[-1].isdigit() and int(value.shape[-1]) != expected:
             self.notes.append(f"{spec.name} expects {expected} input features, but static shape inference sees {value.shape[-1]} at line {line}.")
@@ -580,13 +962,17 @@ class _Tracer:
                 for spec in self.loop_specs[node.func.id]:
                     value = self._apply(spec, value or _Value(("input",), self.initial), getattr(node, "lineno", 0))
                 return value
+            if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+                loop_spec = self.loop_modules.get(node.func.value.id)
+                if loop_spec is not None:
+                    return self._apply_loop_method(loop_spec, node.func.attr, node, env)
             # Shape-changing tensor methods / torch functions between learned layers.
             fn = _dotted(node.func)
             tail = _tail(fn)
             base_value = None
             if isinstance(node.func, ast.Attribute):
                 base_value = self._eval(node.func.value, env)
-            shape_ops = ("flatten", "view", "reshape", "unflatten", "permute", "transpose", "movedim", "unsqueeze", "squeeze", "contiguous", "clone", "detach", "relu", "gelu", "sigmoid", "tanh", "softmax", "dropout", "to", "type_as", "expand", "repeat", "max_pool1d", "max_pool2d", "max_pool3d", "avg_pool1d", "avg_pool2d", "avg_pool3d", "adaptive_avg_pool1d", "adaptive_avg_pool2d", "adaptive_avg_pool3d", "adaptive_max_pool1d", "adaptive_max_pool2d", "adaptive_max_pool3d")
+            shape_ops = ("flatten", "view", "reshape", "unflatten", "permute", "transpose", "movedim", "unsqueeze", "squeeze", "contiguous", "clone", "detach", "relu", "gelu", "sigmoid", "tanh", "softmax", "dropout", "to", "type_as", "expand", "repeat", "mean", "rsqrt", "max_pool1d", "max_pool2d", "max_pool3d", "avg_pool1d", "avg_pool2d", "avg_pool3d", "adaptive_avg_pool1d", "adaptive_avg_pool2d", "adaptive_avg_pool3d", "adaptive_max_pool1d", "adaptive_max_pool2d", "adaptive_max_pool3d")
             if tail in shape_ops:
                 value = base_value or (self._eval(node.args[0], env) if node.args else None)
                 if value is None:
@@ -602,16 +988,16 @@ class _Tracer:
                 shape_ops_that_matter = {
                     "flatten", "view", "reshape", "unflatten", "permute", "transpose", "movedim",
                     "unsqueeze", "squeeze", "expand", "repeat", "MaxPool1d", "MaxPool2d", "MaxPool3d",
-                    "AvgPool1d", "AvgPool2d", "AvgPool3d", "AdaptiveAvgPool1d", "AdaptiveAvgPool2d",
+                    "AvgPool1d", "AvgPool2d", "AvgPool3d", "AdaptiveAvgPool1d", "AdaptiveAvgPool2d", "mean",
                     "AdaptiveAvgPool3d", "AdaptiveMaxPool1d", "AdaptiveMaxPool2d", "AdaptiveMaxPool3d",
                 }
-                functional_layers = {"relu", "gelu", "sigmoid", "tanh", "softmax", "dropout"}
+                functional_layers = {"relu", "gelu", "sigmoid", "tanh", "softmax", "dropout", "rsqrt"}
                 if (normalized in shape_ops_that_matter and transformed != value.shape) or normalized in functional_layers:
                     labels = {
                         "flatten": "Flatten", "view": "Reshape", "reshape": "Reshape", "permute": "Permute",
                         "transpose": "Transpose", "movedim": "MoveDims", "unsqueeze": "Unsqueeze", "squeeze": "Squeeze",
                         "expand": "Expand", "repeat": "Repeat", "relu": "ReLU", "gelu": "GELU", "sigmoid": "Sigmoid",
-                        "tanh": "Tanh", "softmax": "Softmax", "dropout": "Dropout",
+                        "tanh": "Tanh", "softmax": "Softmax", "dropout": "Dropout", "mean": "Mean", "rsqrt": "Rsqrt",
                     }
                     consumed = 1 if not bound else 0
                     shown = [ast.unparse(a) for a in node.args[consumed:]]
@@ -658,6 +1044,14 @@ class _Tracer:
                 return left
             return left or right
         if isinstance(node, ast.IfExp):
+            condition = self._known_test(node.test)
+            if condition is not _UNKNOWN and isinstance(condition, bool):
+                return self._eval(node.body if condition else node.orelse, env)
+            left_attr = _self_attr(node.body.func) if isinstance(node.body, ast.Call) else None
+            right_attr = _self_attr(node.orelse.func) if isinstance(node.orelse, ast.Call) else None
+            conditional_spec = self._spec_for(left_attr) if left_attr and left_attr == right_attr else None
+            if conditional_spec and conditional_spec.kind == "Conditional layer":
+                return self._eval(node.body, env)
             a = self._eval(node.body, env)
             b = self._eval(node.orelse, env)
             vals = [v for v in (a, b) if v]
@@ -714,10 +1108,81 @@ class _Tracer:
         producers = tuple(dict.fromkeys(p for value in returned for p in value.producers))
         return _Value(producers or ("input",), shape)
 
+    def _apply_loop_method(self, spec: Spec, method: str, call: ast.Call, env: Dict[str, _Value]) -> _Value:
+        """Keep a custom ModuleList method call visible when its tuple contract is opaque."""
+        values = [value for arg in call.args if (value := self._eval(arg, env)) is not None]
+        parents = tuple(dict.fromkeys(parent for value in values for parent in value.producers))
+        shape = values[0].shape if values else ("…", "?")
+        name = f"{spec.name.rsplit('.', 1)[0]}[*].{method}"
+        dynamic = Spec(
+            spec.kind, name, {}, f"custom block method {method}; return structure not expanded",
+            custom=True, line=getattr(call, "lineno", 0),
+        )
+        self.notes.append(f"Custom ModuleList method {method} at line {getattr(call, 'lineno', 0)} is shown as one opaque step; its multiple outputs are not separated statically.")
+        return self._add(dynamic, _Value(parents or ("input",), shape), getattr(call, "lineno", 0))
+
+    def _apply_custom(self, spec: Spec, value: _Value, line: int) -> Optional[_Value]:
+        kind = spec.kind
+        forward = self.class_methods.get(kind, {}).get("forward")
+        base_specs = self.class_specs.get(kind)
+        if forward is None or base_specs is None or f"class:{kind}" in self.inline_stack:
+            return None
+        self.used.add(spec.name.split(".", 1)[0])
+        params = dict(spec.params)
+        specialized: Dict[str, Spec] = {}
+        for name, child in base_specs.items():
+            resolved = _specialize_spec(child, params)
+            if resolved is not None:
+                specialized[name] = resolved
+                if resolved.condition:
+                    note = f"{name} is conditional on {resolved.condition}; its candidate layer is shown, but runtime activation is unresolved."
+                    if note not in self.notes:
+                        self.notes.append(note)
+        before_steps = len(self.steps)
+        saved = (self.specs, self.methods, self.return_values, self.instance_params, self.known_null_attrs)
+        self.specs = specialized
+        self.methods = self.class_methods[kind]
+        self.return_values = []
+        self.instance_params = params
+        self.known_null_attrs = set(base_specs) - set(specialized)
+        self.inline_stack.append(f"class:{kind}")
+        try:
+            env = {next((arg.arg for arg in forward.args.args if arg.arg not in ("self", "cls")), "x"): value}
+            self._block(forward.body, env)
+            returned = self.return_values
+        finally:
+            self.inline_stack.pop()
+            self.specs, self.methods, self.return_values, self.instance_params, self.known_null_attrs = saved
+        if not returned:
+            return None
+        shape = returned[0].shape if all(v.shape == returned[0].shape for v in returned) else ("?",)
+        producers = tuple(dict.fromkeys(p for v in returned for p in v.producers))
+        if len(self.steps) == before_steps:
+            placeholder = Spec(spec.kind, spec.name, dict(spec.params), spec.shown_params or "custom module", custom=True, line=line)
+            return self._add(placeholder, value, line)
+        return _Value(producers or value.producers, shape)
+
+    def _known_test(self, node: ast.AST) -> object:
+        if isinstance(node, ast.Compare) and len(node.ops) == len(node.comparators) == 1:
+            attr = _self_attr(node.left)
+            right = node.comparators[0]
+            if attr in self.known_null_attrs and isinstance(right, ast.Constant) and right.value is None:
+                op = node.ops[0]
+                if isinstance(op, ast.IsNot): return False
+                if isinstance(op, ast.Is): return True
+        return _safe_eval(node, self.instance_params)
+
     def _apply(self, spec: Spec, value: _Value, line: int) -> _Value:
+        line = spec.line or line
+        if spec.custom and spec.kind in self.classes:
+            expanded = self._apply_custom(spec, value, line)
+            if expanded is not None:
+                return expanded
+            if self.class_specs.get(spec.kind):
+                self.notes.append(f"Custom module {spec.kind} at line {line} could not be expanded; its output shape is left unknown.")
         if spec.kind in ("Sequential", "ModuleList", "ModuleDict") and spec.children:
             for child in spec.children:
-                value = self._apply(child, value, line)
+                value = self._apply(child, value, child.line or line)
             return value
         return self._add(spec, value, line)
 
@@ -739,6 +1204,19 @@ class _Tracer:
             output_size = kw.get("output_size", args[1] if len(args) > 1 else None)
             sizes = _dim_tuple(output_size, rank, 1)
             return shape[:-rank] + tuple(str(x) for x in sizes) if len(shape) >= rank else ("…", "C", *(str(x) for x in sizes))
+        if kind == "mean":
+            dim = kw.get("dim", args[1] if len(args) > 1 else None)
+            keepdim = kw.get("keepdim", args[2] if len(args) > 2 else False)
+            dims = [dim] if isinstance(dim, int) else list(dim) if isinstance(dim, (tuple, list)) else None
+            if dims is None:
+                return (shape[0],) if keepdim and shape else ("…",)
+            axes = sorted({axis % len(shape) for axis in dims})
+            if keepdim:
+                result = list(shape)
+                for axis in axes:
+                    result[axis] = "1"
+                return tuple(result)
+            return tuple(value for i, value in enumerate(shape) if i not in axes)
         if kind == "flatten":
             default_start = args[0] if bound and args else args[1] if len(args) > 1 else 0
             default_end = args[1] if bound and len(args) > 1 else args[2] if len(args) > 2 else -1
@@ -844,28 +1322,43 @@ class _Tracer:
                 self.return_values.append(value)
             return env
         if isinstance(stmt, ast.If):
+            condition = self._known_test(stmt.test)
             self._eval(stmt.test, env)
             before = dict(env)
+            if isinstance(condition, bool):
+                return self._block(stmt.body if condition else stmt.orelse, before)
             yes = self._block(stmt.body, dict(before))
             no = self._block(stmt.orelse, dict(before)) if stmt.orelse else dict(before)
             if stmt.orelse:
                 self.notes.append(f"Conditional branches at line {stmt.lineno} are both shown; only one path runs at a time.")
+            else:
+                self.notes.append(f"Conditional branch at line {stmt.lineno} is shown as optional; it may be skipped at runtime.")
             return self._join(yes, no)
         if isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
             old_loop_specs = dict(self.loop_specs)
+            old_loop_modules = dict(self.loop_modules)
             if isinstance(stmt, (ast.For, ast.AsyncFor)):
                 self._eval(stmt.iter, env)
                 self._bind(stmt.target, _Value(("input",), self.initial), env)
-                attr = _self_attr(stmt.iter)
+                iterable = stmt.iter
+                if isinstance(iterable, ast.Call) and _tail(_dotted(iterable.func)) == "enumerate" and iterable.args:
+                    iterable = iterable.args[0]
+                attr = _self_attr(iterable)
                 spec = self._spec_for(attr) if attr else None
-                if isinstance(stmt.target, ast.Name) and spec and spec.children:
-                    self.loop_specs[stmt.target.id] = spec.children
+                if spec and spec.children:
+                    targets = [stmt.target] if isinstance(stmt.target, ast.Name) else list(stmt.target.elts) if isinstance(stmt.target, (ast.Tuple, ast.List)) else []
+                    names = [target.id for target in targets if isinstance(target, ast.Name)]
+                    if names:
+                        module_var = names[-1] if isinstance(stmt.target, (ast.Tuple, ast.List)) else names[0]
+                        self.loop_specs[module_var] = spec.children
+                        self.loop_modules[module_var] = spec.children[0]
             else:
                 self._eval(stmt.test, env)
             self.notes.append(f"Loop at line {stmt.lineno} is shown once; it may execute zero or more times.")
             before = dict(env)
             body = self._block(stmt.body, dict(before))
             self.loop_specs = old_loop_specs
+            self.loop_modules = old_loop_modules
             return self._join(before, body)
         if isinstance(stmt, (ast.With, ast.AsyncWith)):
             for item in stmt.items:
@@ -934,24 +1427,33 @@ def _product(dims: Sequence[str]) -> str:
 
 
 def _initial_shape(specs: Dict[str, Spec]) -> Shape:
-    def first(items: Iterable[Spec]) -> Optional[Spec]:
+    flat: List[Spec] = []
+
+    def collect(items: Iterable[Spec]) -> None:
         for item in items:
+            flat.append(item)
             if item.children:
-                nested = first(item.children)
-                if nested:
-                    return nested
-            if item.kind in ("Linear", "LazyLinear"):
-                return item
-            if re.match(r"^(?:Conv(?:Transpose)?)[1-3]d$", item.kind):
-                return item
-        return None
-    spec = first(specs.values())
-    if spec is None:
+                collect(item.children)
+
+    collect(specs.values())
+    first_index = next((i for i, item in enumerate(flat) if item.kind in ("Linear", "LazyLinear") or re.match(r"^(?:Conv(?:Transpose)?)[1-3]d$", item.kind)), None)
+    if first_index is None:
         return ("…", "?")
+    spec = flat[first_index]
     if spec.kind in ("Linear", "LazyLinear"):
         return ("…", str(spec.params.get("in_features") or "features"))
     rank = int(spec.kind[-2])
-    return ("…", str(spec.params.get("in_channels") or "C"), *("H" if i == 0 else "W" if i == 1 else "D" for i in range(rank)))
+    channels = spec.params.get("in_channels") or "C"
+    # Invert leading pixel pack/unpack operations to describe the factory's true input.
+    for prefix in flat[:first_index]:
+        factor = prefix.params.get("downscale_factor", prefix.params.get("upscale_factor", 1))
+        if not isinstance(factor, int) or factor <= 0:
+            continue
+        if prefix.kind == "PixelUnshuffle":
+            channels = str(int(channels) // (factor * factor)) if str(channels).isdigit() else f"{channels}/{factor * factor}"
+        elif prefix.kind == "PixelShuffle":
+            channels = str(int(channels) * factor * factor) if str(channels).isdigit() else f"{channels}×{factor * factor}"
+    return ("…", str(channels), *("H" if i == 0 else "W" if i == 1 else "D" for i in range(rank)))
 
 
 def _class_methods(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], seen: Optional[Set[str]] = None) -> Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
@@ -972,27 +1474,49 @@ def _class_methods(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], seen: O
     return out
 
 
-def _declared_ref(attr: str, specs: Dict[str, Spec]) -> bool:
+def _declared_ref(attr: str, specs: Dict[str, Spec], class_specs: Optional[Dict[str, Dict[str, Spec]]] = None) -> bool:
     if attr in specs:
         return True
-    head, dot, tail = attr.partition(".")
-    parent = specs.get(head)
-    return bool(parent and dot and (tail.isdigit() or any(c.name.rsplit(".", 1)[-1] == tail for c in parent.children)))
+    parts = attr.split(".")
+    current = specs.get(parts[0])
+    if current is None:
+        return False
+    for part in parts[1:]:
+        child = None
+        if part.isdigit() and int(part) < len(current.children):
+            child = current.children[int(part)]
+        elif current.children:
+            child = next((item for item in current.children if item.name.rsplit(".", 1)[-1] == part), None)
+        if child is None and current.custom:
+            child = (class_specs or {}).get(current.kind, {}).get(part)
+        if child is None:
+            return False
+        current = child
+    return True
 
 
-def _layer_calls(method: ast.FunctionDef | ast.AsyncFunctionDef, specs: Dict[str, Spec]) -> Set[str]:
+def _layer_calls(
+    method: ast.FunctionDef | ast.AsyncFunctionDef,
+    specs: Dict[str, Spec],
+    class_specs: Optional[Dict[str, Dict[str, Spec]]] = None,
+) -> Set[str]:
     """Calls to declared module attributes, recognized by expression content, not method name."""
     nodes = analysis.walk_scope(method)
     refs = {
         attr for call in nodes if isinstance(call, ast.Call)
-        if (attr := _self_attr(call.func)) and _declared_ref(attr, specs)
+        if (attr := _self_attr(call.func)) and _declared_ref(attr, specs, class_specs)
     }
     # A ModuleList/Sequential is often invoked through its loop variable, so the module
     # attribute occurs in the iterator expression rather than as a call target.
-    refs.update(
-        attr for loop in analysis.walk_scope(method) if isinstance(loop, (ast.For, ast.AsyncFor))
-        if (attr := _self_attr(loop.iter)) and _declared_ref(attr, specs)
-    )
+    for loop in analysis.walk_scope(method):
+        if not isinstance(loop, (ast.For, ast.AsyncFor)):
+            continue
+        iterable = loop.iter
+        if isinstance(iterable, ast.Call) and _tail(_dotted(iterable.func)) == "enumerate" and iterable.args:
+            iterable = iterable.args[0]
+        attr = _self_attr(iterable)
+        if attr and _declared_ref(attr, specs, class_specs):
+            refs.add(attr)
     return refs
 
 
@@ -1004,7 +1528,27 @@ def _method_calls(method: ast.FunctionDef | ast.AsyncFunctionDef) -> Set[str]:
     }
 
 
-def _execution_methods(methods: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef], specs: Dict[str, Spec]) -> List[ast.FunctionDef | ast.AsyncFunctionDef]:
+_FUNCTIONAL_OPS = {
+    "relu", "gelu", "tanh", "sigmoid", "softmax", "log_softmax", "dropout",
+    "flatten", "reshape", "view", "permute", "transpose", "movedim", "unsqueeze", "squeeze",
+    "max_pool1d", "max_pool2d", "max_pool3d", "avg_pool1d", "avg_pool2d", "avg_pool3d",
+    "mean", "rsqrt",
+}
+
+
+def _functional_calls(method: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Known tensor operations are content evidence for functional-only module methods."""
+    return any(
+        isinstance(node, ast.Call) and _tail(_dotted(node.func)).lower() in _FUNCTIONAL_OPS
+        for node in analysis.walk_scope(method)
+    )
+
+
+def _execution_methods(
+    methods: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef],
+    specs: Dict[str, Spec],
+    class_specs: Optional[Dict[str, Dict[str, Spec]]] = None,
+) -> List[ast.FunctionDef | ast.AsyncFunctionDef]:
     """Find top-level methods whose bodies reach calls to declared layers.
 
     ``forward`` is preferred only when it is actually present in the content-derived call graph.
@@ -1013,7 +1557,7 @@ def _execution_methods(methods: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef
     treated as implementation details rather than separate entry points.
     """
     candidates = {name: method for name, method in methods.items() if name not in ("__init__", "__new__")}
-    relevant = {name for name, method in candidates.items() if _layer_calls(method, specs)}
+    relevant = {name for name, method in candidates.items() if _layer_calls(method, specs, class_specs) or _functional_calls(method)}
     # If an entrypoint delegates to an internal helper, include the caller in the content-derived
     # graph. _Tracer inlines these local helpers, so the path still ends at the actual layer nodes.
     changed = True
@@ -1031,11 +1575,96 @@ def _execution_methods(methods: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef
     return roots or [candidates[name] for name in candidates if name in relevant]
 
 
+def _factory_schema(
+    src: Source,
+    fn: ast.FunctionDef | ast.AsyncFunctionDef,
+    nn: Set[str],
+    layer_aliases: Dict[str, str],
+    classes: Dict[str, ast.ClassDef],
+    factories: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef],
+    class_methods: Dict[str, Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]],
+    class_specs: Dict[str, Dict[str, Spec]],
+) -> Optional[Schema]:
+    """A function returning a Sequential is itself a useful, callable model architecture."""
+    call = ast.Call(func=ast.Name(id=fn.name, ctx=ast.Load()), args=[], keywords=[])
+    spec = _make_spec(call, fn.name, nn, layer_aliases, classes, factories)
+    if spec is None or spec.kind not in ("Sequential", "ModuleList", "ModuleDict") or not spec.children:
+        return None
+    initial = _initial_shape({fn.name: spec})
+    input_name = "image" if "encoder" in fn.name.lower() else "latent"
+    tracer = _Tracer(src, {fn.name: spec}, input_name, initial, classes=classes, class_methods=class_methods, class_specs=class_specs)
+    value = tracer._apply(spec, _Value(("input",), initial), getattr(fn, "lineno", 0))
+    route = Route(fn.name, input_name, initial, tracer.steps, [value.shape], tracer.notes, "factory")
+    return Schema(fn.name, "factory", "returns a statically expandable Sequential of layer modules", input_name, initial, route.steps, route.output_shapes, route.notes, len(spec.children), fn.name, [route])
+
+
+def _conditional_factory_notes(
+    init: Optional[ast.FunctionDef | ast.AsyncFunctionDef],
+    factories: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef],
+) -> Dict[str, List[str]]:
+    """Explain conditional factory replacements without pretending one branch is the default."""
+    if init is None:
+        return {}
+    contexts = _conditional_contexts(init)
+    notes: Dict[str, List[str]] = {}
+    for stmt in analysis.walk_scope(init):
+        if id(stmt) not in contexts or not isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+            continue
+        value = stmt.value
+        targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+        pairs: List[Tuple[ast.AST, ast.AST]] = []
+        if len(targets) == 1 and isinstance(targets[0], (ast.Tuple, ast.List)) and isinstance(value, (ast.Tuple, ast.List)):
+            pairs = list(zip(targets[0].elts, value.elts))
+        else:
+            pairs = [(target, value) for target in targets]
+        for target, expr in pairs:
+            attr = _self_attr(target)
+            if not attr or not isinstance(expr, ast.Call):
+                continue
+            factory = _tail(_dotted(expr.func))
+            if factory not in factories:
+                continue
+            note = f"Conditional architecture: {attr} is replaced by {factory}(…) when {contexts[id(stmt)]}; the factory has its own schema path."
+            notes.setdefault(attr, []).append(note)
+    return notes
+
+
+def _attribute_routes(
+    src: Source,
+    specs: Dict[str, Spec],
+    classes: Dict[str, ast.ClassDef],
+    class_methods: Dict[str, Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]],
+    class_specs: Dict[str, Dict[str, Spec]],
+    conditional_notes: Optional[Dict[str, List[str]]] = None,
+) -> List[Route]:
+    """A wrapper with declared encoder/decoder stacks but no own forward still has useful paths."""
+    routes: List[Route] = []
+    for name, spec in specs.items():
+        if spec.kind not in ("Sequential", "ModuleList", "ModuleDict") or not spec.children:
+            continue
+        initial = _initial_shape({name: spec})
+        input_name = "image" if "encoder" in name.lower() else "latent"
+        tracer = _Tracer(src, {name: spec}, input_name, initial, classes=classes, class_methods=class_methods, class_specs=class_specs)
+        value = tracer._apply(spec, _Value(("input",), initial), spec.line)
+        notes = list(dict.fromkeys([*tracer.notes, *((conditional_notes or {}).get(name, []))]))
+        routes.append(Route(name, input_name, initial, tracer.steps, [value.shape], notes, "attribute"))
+    return routes
+
+
 def analyze(src: Source) -> Dict[int, Schema]:
     """Find module-like classes and trace methods whose contents invoke declared layers."""
     classes = _classes(src.tree)
     nn, module_names, layer_aliases = _aliases(src.tree)
     imported = _imported_names(src.tree)
+    factories = {n.name: n for n in src.tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    class_methods = {name: _class_methods(node, classes) for name, node in classes.items()}
+    class_specs: Dict[str, Dict[str, Spec]] = {}
+    for class_name, class_node in classes.items():
+        visible = class_methods[class_name]
+        refs = set().union(*(_called_self_attrs(method) for method in visible.values())) if visible else set()
+        declared = _inherited_specs(class_node, classes, nn, layer_aliases, refs, imported, factories)
+        declared.update(_declared(class_node, nn, layer_aliases, classes, refs, imported, factories))
+        class_specs[class_name] = declared
     module_like: Set[str] = set()
     detection: Dict[str, Tuple[str, str]] = {}
     # Resolve inheritance to a fixed point so local intermediate base classes work.
@@ -1054,12 +1683,12 @@ def analyze(src: Source) -> Dict[int, Schema]:
             break
     result: Dict[int, Schema] = {}
     for name, node in classes.items():
-        methods = _class_methods(node, classes)
+        methods = class_methods[name]
         called = set().union(*(_called_self_attrs(m) for m in methods.values())) if methods else set()
-        specs = _inherited_specs(node, classes, nn, layer_aliases, called, imported)
-        specs.update(_declared(node, nn, layer_aliases, classes, called, imported))
-        routes_methods = _execution_methods(methods, specs)
-        direct_layers = [s for s in specs.values() if s.kind not in ("Sequential", "ModuleList", "ModuleDict") or s.children]
+        specs = _inherited_specs(node, classes, nn, layer_aliases, called, imported, factories)
+        specs.update(_declared(node, nn, layer_aliases, classes, called, imported, factories))
+        routes_methods = _execution_methods(methods, specs, class_specs)
+        direct_layers = [s for s in specs.values() if s.kind not in ("Parameter", "Buffer") and (s.kind not in ("Sequential", "ModuleList", "ModuleDict") or s.children)]
 
         if name not in module_like:
             # A plain class only qualifies if its code actually calls a declared module-like child.
@@ -1072,21 +1701,34 @@ def analyze(src: Source) -> Dict[int, Schema]:
         for method in routes_methods:
             input_name = next((a.arg for a in method.args.posonlyargs + method.args.args if a.arg not in ("self", "cls")), "input")
             initial = _shape_hint(method, src, input_name) or _initial_shape(specs)
-            tracer = _Tracer(src, specs, input_name, initial, methods)
+            tracer = _Tracer(src, specs, input_name, initial, methods, classes, class_methods, class_specs)
             steps, outputs, notes, used = tracer.trace(method)
-            unused = [k for k in specs if k not in used]
+            notes[:] = list(dict.fromkeys(notes))
+            unused = [k for k, spec in specs.items() if spec.kind not in ("Parameter", "Buffer") and k not in used]
             if unused:
                 notes.append("Declared modules not observed in this method: " + ", ".join(unused[:8]) + (" …" if len(unused) > 8 else "."))
             if not steps:
                 notes.append("No declared layer calls could be traced from this method.")
             routes.append(Route(method.name, input_name, tracer.initial, steps, outputs, notes))
 
-        if not routes:
-            if name in module_like:
+        if not routes and name in module_like:
+            conditional_notes = _conditional_factory_notes(_class_method(node, "__init__"), factories)
+            routes = _attribute_routes(src, specs, classes, class_methods, class_specs, conditional_notes)
+            if routes:
+                routes[0].notes.append("This wrapper has no own forward method; the displayed paths are its declared module stacks.")
+            else:
+                child_names = [key for key, child in specs.items() if child.kind != "Parameter"]
+                explanation = (
+                    f"Declares child modules ({', '.join(child_names[:8])}) but has no standalone execution path; a parent method may call these components."
+                    if child_names else
+                    "No method body calling a declared layer was detected, and no sequential child stack was found."
+                )
                 result[id(node)] = Schema(
                     name, detection[name][0], detection[name][1], "input", ("…", "?"), [], [],
-                    ["No method body calling a declared layer was detected."], len(specs), "", [],
+                    [explanation], len(specs), "", [],
                 )
+                continue
+        if not routes:
             continue
 
         primary = routes[0]
@@ -1094,4 +1736,8 @@ def analyze(src: Source) -> Dict[int, Schema]:
             name, detection[name][0], detection[name][1], primary.input_name, primary.input_shape,
             primary.steps, primary.output_shapes, primary.notes, len(specs), primary.method_name, routes,
         )
+    for fn in factories.values():
+        schema = _factory_schema(src, fn, nn, layer_aliases, classes, factories, class_methods, class_specs)
+        if schema is not None:
+            result[id(fn)] = schema
     return result

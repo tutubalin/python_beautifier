@@ -266,6 +266,86 @@ def test_non_module_class_cards_do_not_get_the_schema_section():
     assert "Model schema" not in html
 
 
+def test_factories_custom_residual_blocks_and_wrappers_are_expanded_without_execution():
+    code = '''
+import torch
+from torch import nn
+
+def conv(a, b, **kw):
+    return nn.Conv2d(a, b, 3, padding=1, **kw)
+
+class Clamp(nn.Module):
+    def forward(self, x):
+        return torch.tanh(x)
+
+class Block(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.conv = nn.Sequential(conv(in_channels, out_channels), nn.ReLU(), conv(out_channels, out_channels))
+        self.skip = nn.Conv2d(in_channels, out_channels, 1) if in_channels != out_channels else nn.Identity()
+        self.act = nn.ReLU()
+    def forward(self, x):
+        return self.act(self.conv(x) + self.skip(x))
+
+def Encoder(channels=4):
+    return nn.Sequential(conv(3, 8), Block(8, 8), conv(8, channels, stride=2))
+
+class Wrap(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = Encoder(4)
+'''
+    found = analyze(Source(code))
+    schemas_by_name = {schema.name: schema for schema in found.values()}
+
+    # Functional-only modules are selected from method contents; factory returns and
+    # custom residual blocks are expanded from syntax without importing or running code.
+    assert [step.kind for step in schemas_by_name["Clamp"].steps] == ["Tanh"]
+    block = schemas_by_name["Block"]
+    assert [step.kind for step in block.steps] == ["Conv2d", "ReLU", "Conv2d", "Conditional layer", "Add", "ReLU"]
+    assert block.output_shapes == [("…", "out_channels", "H", "W")]
+
+    factory = schemas_by_name["Encoder"]
+    wrapper = schemas_by_name["Wrap"]
+    for schema in (factory, wrapper):
+        assert [step.kind for step in schema.steps].count("Conv2d") == 4
+        assert "Identity" in [step.kind for step in schema.steps]
+        assert schema.output_shapes == [("…", "4", "ceil(H/2)", "ceil(W/2)")]
+    assert factory.detection == "factory"
+    assert wrapper.routes[0].kind == "attribute"
+    assert "no own forward method" in wrapper.routes[0].notes[0]
+
+    html = beautify(code)
+    assert "sequential factory" in html
+    assert "Model schema" in html
+    assert "ceil(H/2)" in html
+
+
+def test_wrapper_reports_conditional_factory_replacements_instead_of_claiming_one_architecture():
+    code = '''
+from torch import nn
+
+def BaseEncoder():
+    return nn.Sequential(nn.Conv2d(3, 4, 3, padding=1))
+
+def FastEncoder():
+    return nn.Sequential(nn.Conv2d(3, 8, 3, padding=1))
+
+class Model(nn.Module):
+    def __init__(self, fast=False):
+        super().__init__()
+        self.encoder = BaseEncoder()
+        if fast:
+            self.encoder = FastEncoder()
+'''
+    found = {schema.name: schema for schema in analyze(Source(code)).values()}
+    model = found["Model"]
+    assert model.routes[0].output_shapes == [("…", "4", "H", "W")]
+    assert any("replaced by FastEncoder" in note and "when fast" in note for note in model.routes[0].notes)
+    assert found["FastEncoder"].detection == "factory"
+    assert found["FastEncoder"].output_shapes == [("…", "8", "H", "W")]
+
+
 def test_realistic_example_schema():
     src = Source((ROOT / "examples" / "vision_model.py").read_text(encoding="utf-8"))
     found = analyze(src)
