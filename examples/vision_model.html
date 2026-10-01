@@ -1,0 +1,1525 @@
+<!doctype html>
+<html lang="en" data-theme="auto" style="--gutter:53px">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vision_model.py · beautified</title>
+<meta name="generator" content="python_beautifier">
+<style>
+/* ==========================================================================
+   python_beautifier - base layer: tokens, syntax colours, page layout
+   Everything is inline and offline: no fonts, images or scripts are fetched.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --r-xl: 22px;
+  --r-lg: 16px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  --r-xs: 5px;
+  --side-w: 288px;
+
+  /* surfaces */
+  --bg: #f3f4fb;
+  --surface: #ffffff;
+  --surface-2: #f8f9fe;
+  --surface-3: #eef0fa;
+  --code-bg: #f6f7fd;
+  --hover: rgb(91 91 240 / 0.06);
+  --line: #e4e7f4;
+  --line-2: #d2d7ee;
+
+  /* ink */
+  --ink: #1a1d3a;
+  --ink-2: #484e78;
+  --ink-3: #6f769f;
+  --ink-4: #a2a8c6;
+
+  /* brand */
+  --accent: #5b5bf0;
+  --accent-2: #9b5cf6;
+  --accent-3: #ec4899;
+
+  /* semantic hues for control flow */
+  --c-if: #c77800;
+  --c-yes: #15935a;
+  --c-no: #e0364f;
+  --c-loop: #7c3aed;
+  --c-try: #0a84c6;
+  --c-except: #e5590c;
+  --c-finally: #5f6f86;
+  --c-with: #0d9488;
+  --c-match: #c026d3;
+  --c-ret: #0f9d6b;
+  --c-raise: #dc2a2a;
+  --c-else: #6b7590;
+  --c-main: #4f46e5;
+  --c-case: #c026d3;
+
+  /* complexity grades */
+  --g-A: #19a974;
+  --g-B: #7cb518;
+  --g-C: #e8a100;
+  --g-D: #f26b1d;
+  --g-E: #e0364f;
+  --g-F: #b5179e;
+
+  /* declaration kinds */
+  --k-cls: #5b5bf0;
+  --k-fn: #2a7de1;
+  --k-m: #0f9fb8;
+  --k-p: #12a594;
+
+  /* syntax */
+  --tk-k: #7a3ff0;
+  --tk-kc: #c2255c;
+  --tk-b: #0b7f94;
+  --tk-ex: #e0590c;
+  --tk-fd: #1565c0;
+  --tk-cd: #b45309;
+  --tk-fc: #2f6bd8;
+  --tk-cn: #c2410c;
+  --tk-cs: #a16207;
+  --tk-sl: #a13fb5;
+  --tk-dn: #8a90ab;
+  --tk-kw: #b45309;
+  --tk-ty: #0a7489;
+  --tk-at: #4d5478;
+  --tk-s: #27894a;
+  --tk-sf: #d9480f;
+  --tk-es: #e08600;
+  --tk-n: #c2410c;
+  --tk-o: #7a82a6;
+  --tk-cm: #8088ac;
+
+  --shadow-s: 0 1px 2px rgb(26 29 70 / 0.05), 0 1px 1px rgb(26 29 70 / 0.03);
+  --shadow-m: 0 10px 28px -12px rgb(26 29 70 / 0.22), 0 2px 6px rgb(26 29 70 / 0.05);
+  --glow: 0 0 0 3px rgb(91 91 240 / 0.18);
+}
+
+/*DARK{*/
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c0e1d;
+  --surface: #14172e;
+  --surface-2: #181c38;
+  --surface-3: #1e2344;
+  --code-bg: #10132a;
+  --hover: rgb(139 140 255 / 0.09);
+  --line: #242a50;
+  --line-2: #323a6a;
+  --ink: #e8eaff;
+  --ink-2: #b6bbe0;
+  --ink-3: #8b92c2;
+  --ink-4: #5d6493;
+  --accent: #8b8cff;
+  --accent-2: #b48bff;
+  --accent-3: #ff7ac0;
+  --c-if: #f5b53d;
+  --c-yes: #3dd598;
+  --c-no: #ff6b81;
+  --c-loop: #a98bff;
+  --c-try: #4cb8ff;
+  --c-except: #ff8a4c;
+  --c-finally: #94a3bd;
+  --c-with: #2dd4bf;
+  --c-match: #e879f9;
+  --c-ret: #34d399;
+  --c-raise: #ff6b6b;
+  --c-else: #94a0bd;
+  --c-main: #8b8cff;
+  --c-case: #e879f9;
+  --g-A: #34d399;
+  --g-B: #a3d94a;
+  --g-C: #fbbf24;
+  --g-D: #fb923c;
+  --g-E: #ff6b81;
+  --g-F: #e879f9;
+  --k-cls: #8b8cff;
+  --k-fn: #62a8ff;
+  --k-m: #38d0e8;
+  --k-p: #34d8c4;
+  --tk-k: #c39bff;
+  --tk-kc: #ff7aa8;
+  --tk-b: #4fd6ee;
+  --tk-ex: #ff9d5c;
+  --tk-fd: #7cb7ff;
+  --tk-cd: #ffc170;
+  --tk-fc: #86b6ff;
+  --tk-cn: #ffa06b;
+  --tk-cs: #f5cd6b;
+  --tk-sl: #e59bff;
+  --tk-dn: #8189b8;
+  --tk-kw: #ffb870;
+  --tk-ty: #5fd8e8;
+  --tk-at: #b4baea;
+  --tk-s: #7fe3a0;
+  --tk-sf: #ffa36b;
+  --tk-es: #ffc46b;
+  --tk-n: #ffa36b;
+  --tk-o: #8f97c8;
+  --tk-cm: #7a82b4;
+  --shadow-s: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-m: 0 14px 34px -14px rgb(0 0 0 / 0.65), 0 2px 8px rgb(0 0 0 / 0.3);
+  --glow: 0 0 0 3px rgb(139 140 255 / 0.3);
+}
+/*}DARK*/
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: inherit; text-decoration: none; }
+code, pre, kbd { font-family: var(--font-mono); }
+button { font: inherit; color: inherit; }
+::selection { background: color-mix(in oklab, var(--accent) 28%, transparent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+.i { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.16em; }
+.sp { flex: 1; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+[hidden] { display: none !important; }
+
+/* thin scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+
+/* ---------- syntax colours -------------------------------------------- */
+i.k { color: var(--tk-k); font-style: normal; font-weight: 600; }
+i.kc { color: var(--tk-kc); font-style: normal; font-weight: 600; }
+i.b { color: var(--tk-b); font-style: normal; }
+i.ex { color: var(--tk-ex); font-style: normal; }
+i.fd { color: var(--tk-fd); font-style: normal; font-weight: 700; }
+i.cd { color: var(--tk-cd); font-style: normal; font-weight: 700; }
+i.fc, i.mc { color: var(--tk-fc); font-style: normal; }
+i.cn { color: var(--tk-cn); font-style: normal; }
+i.cs { color: var(--tk-cs); font-style: normal; font-weight: 600; }
+i.sl { color: var(--tk-sl); font-style: italic; }
+i.dn { color: var(--tk-dn); font-style: italic; }
+i.kw { color: var(--tk-kw); font-style: normal; }
+i.ty { color: var(--tk-ty); font-style: normal; }
+i.at { color: var(--tk-at); font-style: normal; }
+i.s { color: var(--tk-s); font-style: normal; }
+i.sf { color: var(--tk-sf); font-style: normal; font-weight: 600; }
+i.es { color: var(--tk-es); font-style: normal; }
+i.n { color: var(--tk-n); font-style: normal; }
+i.o { color: var(--tk-o); font-style: normal; }
+i.cm { color: var(--tk-cm); font-style: italic; }
+
+/* ---------- app shell -------------------------------------------------- */
+.app { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100vh; }
+.main { min-width: 0; padding-bottom: 40px; }
+.main > section, .main > footer { width: min(1180px, calc(100% - 48px)); margin-inline: auto; }
+
+/* ---------- sidebar ----------------------------------------------------- */
+.side { position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--line); background: var(--surface); z-index: 30; }
+.side-in { height: 100%; display: flex; flex-direction: column; padding: 18px 14px 14px; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 4px 6px; }
+.logo {
+  width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; color: #fff; flex: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+  box-shadow: 0 6px 16px -6px color-mix(in oklab, var(--accent) 70%, transparent);
+}
+.logo .i { width: 20px; height: 20px; }
+.bt { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.bt b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt small { color: var(--ink-3); font-size: 12px; }
+.search {
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 38px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-3); transition: border-color .15s, box-shadow .15s;
+}
+.search:focus-within { border-color: var(--accent); box-shadow: var(--glow); }
+.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 14px var(--font-ui); }
+.search input::placeholder { color: var(--ink-4); }
+.outline { flex: 1; overflow: auto; margin: 0 -6px; padding: 0 6px 12px; }
+.outline ul { list-style: none; margin: 0; padding: 0; }
+.ol-top { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 10px; font-weight: 600; font-size: 13.5px; color: var(--ink-2); }
+.ol-top:hover { background: var(--hover); color: var(--ink); }
+.ol-h { display: flex; align-items: center; gap: 8px; margin: 16px 10px 6px; font: 700 11px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+.ol-h small { background: var(--surface-3); color: var(--ink-3); border-radius: 99px; padding: 1px 7px; font-size: 10.5px; letter-spacing: 0; }
+.outline li { position: relative; }
+.outline li > a {
+  display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 4px; margin-left: 20px; border-radius: 9px; font-size: 13.5px; color: var(--ink-2);
+  transition: background .12s, color .12s;
+}
+.outline li > a .i { width: 15px; height: 15px; color: var(--ink-3); }
+.outline li > a span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12.5px; }
+.outline li > a:hover { background: var(--hover); color: var(--ink); }
+.outline li > a.on { background: color-mix(in oklab, var(--accent) 13%, transparent); color: var(--ink); font-weight: 600; }
+.outline li > a.on .i { color: var(--accent); }
+.ol-class > a .i { color: var(--k-cls); }
+.ol-function > a .i, .ol-method > a .i { color: var(--k-fn); }
+.ol-method > a .i { color: var(--k-m); }
+.ol-property > a .i { color: var(--k-p); }
+.ol-todo > a .i { color: var(--c-if); }
+.ol-sub { margin-left: 14px !important; border-left: 1px solid var(--line); }
+.ol-sub > li > a { margin-left: 10px; }
+.ol-t { position: absolute; left: 0; top: 4px; width: 20px; height: 26px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-4); cursor: pointer; padding: 0; }
+.ol-t.ph { pointer-events: none; }
+.ol-t .i { width: 14px; height: 14px; transition: transform .15s; }
+li.collapsed > .ol-t .i { transform: rotate(-90deg); }
+li.collapsed > .ol-sub { display: none; }
+.dot { width: 8px; height: 8px; border-radius: 99px; flex: none; background: var(--g, var(--g-A)); box-shadow: 0 0 0 2px color-mix(in oklab, var(--g, var(--g-A)) 22%, transparent); }
+.cnt { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: color-mix(in oklab, var(--c-if) 18%, transparent); color: var(--c-if); }
+.ol-empty { padding: 14px; color: var(--ink-3); font-size: 13px; text-align: center; }
+.g-A { --g: var(--g-A); } .g-B { --g: var(--g-B); } .g-C { --g: var(--g-C); }
+.g-D { --g: var(--g-D); } .g-E { --g: var(--g-E); } .g-F { --g: var(--g-F); }
+
+/* ---------- top bar ----------------------------------------------------- */
+.topbar {
+  position: sticky; top: 0; z-index: 25; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 24px;
+  background: color-mix(in oklab, var(--bg) 82%, transparent); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+}
+.btn {
+  display: inline-flex; flex: none; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 10px; cursor: pointer; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); font: 600 12.5px var(--font-ui);
+  box-shadow: var(--shadow-s); transition: transform .12s, border-color .12s, color .12s, background .12s;
+}
+.btn:hover { border-color: var(--line-2); color: var(--ink); transform: translateY(-1px); }
+.btn[aria-pressed="false"] { opacity: .55; }
+.icon-btn { width: 34px; padding: 0; justify-content: center; }
+#menu { display: none; }
+.t-moon { display: none; }
+html.is-dark .t-sun { display: none; }
+html.is-dark .t-moon { display: inline; }
+
+/* ---------- hero -------------------------------------------------------- */
+.hero { position: relative; overflow: hidden; padding: 46px 0 30px; isolation: isolate; }
+.hero-bg {
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    radial-gradient(900px 420px at 8% -20%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 62%),
+    radial-gradient(800px 420px at 98% 0%, color-mix(in oklab, var(--accent-3) 18%, transparent), transparent 60%),
+    radial-gradient(700px 360px at 60% 110%, color-mix(in oklab, var(--accent-2) 18%, transparent), transparent 62%);
+}
+.hero-bg::after {
+  content: ""; position: absolute; inset: 0; opacity: .55;
+  background-image: radial-gradient(var(--line-2) 1px, transparent 1.2px); background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 85%); mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+}
+.hero-in, .hero-foot { width: min(1180px, calc(100% - 48px)); margin-inline: auto; }
+.hero-in { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 40px; align-items: center; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 10px; border-radius: 99px; background: color-mix(in oklab, var(--surface) 70%, transparent); border: 1px solid var(--line); color: var(--ink-3); font: 600 12.5px var(--font-mono); backdrop-filter: blur(6px); }
+.title { margin: 16px 0 10px; font: 800 clamp(2.3rem, 5.2vw, 3.8rem)/1.02 var(--font-ui); letter-spacing: -.035em; overflow-wrap: anywhere; }
+.title .stem { background: linear-gradient(100deg, var(--accent), var(--accent-2) 55%, var(--accent-3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.title .suffix { color: var(--ink-4); font-weight: 600; }
+.lead { margin: 0 0 16px; max-width: 62ch; font-size: clamp(1.05rem, 1.6vw, 1.22rem); line-height: 1.55; color: var(--ink-2); }
+.lead code, .sum code { font-size: .88em; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hero-art { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--ink-4); }
+.hero-art small { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+.minimap {
+  width: 100%; height: auto; padding: 16px; border-radius: 18px; background: color-mix(in oklab, var(--surface) 82%, transparent);
+  border: 1px solid var(--line); box-shadow: var(--shadow-m); backdrop-filter: blur(6px);
+}
+.mm-code { fill: color-mix(in oklab, var(--ink-3) 55%, transparent); }
+.mm-docs { fill: color-mix(in oklab, var(--c-with) 60%, transparent); }
+.mm-comment { fill: color-mix(in oklab, var(--c-yes) 55%, transparent); }
+.mm-def { fill: var(--accent); }
+.mm-blank { fill: none; }
+.hero-foot { margin-top: 30px; display: grid; gap: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 12px; }
+.tile {
+  position: relative; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center;
+  padding: 13px 14px; border-radius: var(--r-lg); background: color-mix(in oklab, var(--surface) 88%, transparent); border: 1px solid var(--line); box-shadow: var(--shadow-s);
+  backdrop-filter: blur(6px);
+}
+.tile .ti { grid-row: span 2; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, transparent); }
+.tile b { font: 800 22px/1.05 var(--font-ui); letter-spacing: -.02em; align-self: end; }
+.tile small { color: var(--ink-3); font-size: 12px; align-self: start; line-height: 1.25; }
+.tile.good .ti { color: var(--c-yes); background: color-mix(in oklab, var(--c-yes) 14%, transparent); }
+.tile.mid .ti { color: var(--c-if); background: color-mix(in oklab, var(--c-if) 14%, transparent); }
+.tile.low .ti { color: var(--c-no); background: color-mix(in oklab, var(--c-no) 14%, transparent); }
+.linebar { display: grid; gap: 8px; }
+.lb-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; gap: 2px; background: transparent; }
+.lb { min-width: 4px; }
+.lb-code { background: color-mix(in oklab, var(--ink-3) 65%, transparent); }
+.lb-docs { background: var(--c-with); }
+.lb-comment { background: var(--c-yes); }
+.lb-blank { background: var(--line-2); }
+.lb-bar .lb:first-child { border-radius: 99px 0 0 99px; }
+.lb-bar .lb:last-child { border-radius: 0 99px 99px 0; }
+.lb-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--ink-3); }
+.lk { display: inline-flex; align-items: center; gap: 6px; }
+.lk i { width: 10px; height: 10px; border-radius: 4px; display: inline-block; }
+.lk b { color: var(--ink); font-weight: 700; }
+
+/* ---------- overview panels -------------------------------------------- */
+.overview { margin-top: 26px; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; }
+.panel { grid-column: span 6; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-s); overflow: hidden; }
+.panel.wide { grid-column: span 12; }
+.ph { display: flex; align-items: center; gap: 10px; margin: 0; padding: 16px 20px 0; font: 700 15px var(--font-ui); letter-spacing: -.005em; }
+.ph .i { width: 30px; height: 30px; padding: 7px; border-radius: 10px; color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, transparent); }
+.ph small { margin-left: auto; font-weight: 500; font-size: 12.5px; color: var(--ink-3); }
+.pb { padding: 14px 20px 20px; }
+.more-note { margin: 10px 2px 0; color: var(--ink-3); font-size: 13px; }
+
+/* ---------- section titles, legend, footer ------------------------------ */
+.source { margin-top: 44px; }
+.sec-title { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font: 800 26px/1.2 var(--font-ui); letter-spacing: -.02em; }
+.sec-title .i { width: 38px; height: 38px; padding: 9px; border-radius: 13px; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 8px 18px -8px color-mix(in oklab, var(--accent) 70%, transparent); }
+.sec-title small { font: 500 14px var(--font-ui); color: var(--ink-3); letter-spacing: 0; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 10px 14px; border: 1px dashed var(--line-2); border-radius: var(--r-md); background: color-mix(in oklab, var(--surface) 70%, transparent); margin-bottom: 8px; }
+.legend-l { font: 700 11px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-right: 6px; }
+.lg { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 99px; font: 600 12px var(--font-ui); color: color-mix(in oklab, var(--lc) 88%, var(--ink)); background: color-mix(in oklab, var(--lc) 13%, var(--surface)); border: 1px solid color-mix(in oklab, var(--lc) 30%, transparent); }
+.lg .i { width: 13px; height: 13px; }
+.lg-if { --lc: var(--c-if); } .lg-yes { --lc: var(--c-yes); } .lg-no { --lc: var(--c-no); } .lg-loop { --lc: var(--c-loop); }
+.lg-try { --lc: var(--c-try); } .lg-except { --lc: var(--c-except); } .lg-with { --lc: var(--c-with); } .lg-match { --lc: var(--c-match); }
+.lg-ret { --lc: var(--c-ret); } .lg-raise { --lc: var(--c-raise); }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 13px; }
+.foot .i { margin-right: 6px; color: var(--accent); }
+
+/* ---------- responsive -------------------------------------------------- */
+@media (max-width: 1100px) {
+  .hero-in { grid-template-columns: 1fr; }
+  .hero-art { display: none; }
+}
+@media (min-width: 961px) and (max-width: 1060px) {
+  /* the sidebar leaves little room for the toolbar: icons only (the tooltips keep the names) */
+  .topbar .btn span { display: none; }
+  .topbar .btn:not(.icon-btn) { width: 34px; padding: 0; justify-content: center; }
+}
+@media (max-width: 960px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { position: fixed; inset: 0 auto 0 0; width: min(86vw, 330px); transform: translateX(-102%); transition: transform .22s ease; box-shadow: var(--shadow-m); }
+  body.menu-open .side { transform: none; }
+  body.menu-open::after { content: ""; position: fixed; inset: 0; background: rgb(8 10 30 / .45); z-index: 29; }
+  #menu { display: inline-flex; }
+  .topbar { padding: 10px 14px; }
+  .topbar .btn span { display: none; }
+  .topbar .btn:not(.icon-btn) { width: 34px; padding: 0; justify-content: center; }
+  .main > section, .main > footer, .hero-in, .hero-foot { width: calc(100% - 28px); }
+  .panel { grid-column: span 12; }
+}
+
+/* ---------- error page -------------------------------------------------- */
+body.err-page { display: grid; place-items: center; min-height: 100vh; padding: 24px; }
+.errbox { width: min(820px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); padding: 34px; box-shadow: var(--shadow-m); }
+.err-ic { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 18px; color: var(--c-raise); background: color-mix(in oklab, var(--c-raise) 13%, transparent); margin-bottom: 14px; }
+.err-ic .i { width: 28px; height: 28px; }
+.errbox h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -.02em; }
+.errbox h1 span { color: var(--accent); }
+.errbox .msg { display: inline-block; margin: 0 0 18px; padding: 6px 14px; border-radius: 10px; font: 600 14px var(--font-mono); background: color-mix(in oklab, var(--c-raise) 12%, transparent); color: var(--c-raise); }
+.errcode { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--code-bg); overflow: auto; padding: 8px 0; font: 13px/1.6 var(--font-mono); }
+.el { display: flex; padding: 0 14px 0 0; white-space: pre; }
+.el i { width: 52px; text-align: right; padding-right: 14px; color: var(--ink-4); font-style: normal; user-select: none; flex: none; }
+.el.bad { background: color-mix(in oklab, var(--c-raise) 10%, transparent); }
+.el.caret code { color: var(--c-raise); font-weight: 700; }
+.errbox .hint { margin: 18px 0 0; color: var(--ink-3); font-size: 13.5px; }
+
+/* ---------- print ------------------------------------------------------- */
+@media print {
+  :root { --bg: #fff; }
+  .side, .topbar, .tog, .cpy, .legend, .hero-art { display: none !important; }
+  .app { display: block; }
+  .main > section, .main > footer, .hero-in, .hero-foot { width: 100%; }
+  .card { break-inside: auto; box-shadow: none; }
+  .panel, .box, .if, .try, .guard { break-inside: avoid; }
+  .cb { display: block !important; }
+  body { background: #fff; }
+  html { scroll-behavior: auto; }
+}
+
+/* ==========================================================================
+   Cards, tables, widgets and docstring prose
+   ========================================================================== */
+
+/* ---------- badges & chips ---------------------------------------------- */
+.bd {
+  --bc: var(--ink-2);
+  display: inline-flex; align-items: center; gap: 5px; padding: 1px 10px 1px 8px; border-radius: 99px;
+  font: 600 11.5px/1.65 var(--font-ui); color: var(--bc); white-space: nowrap;
+  background: color-mix(in oklab, var(--bc) 11%, transparent); border: 1px solid color-mix(in oklab, var(--bc) 26%, transparent);
+}
+.bd .i { width: 13px; height: 13px; }
+.bd-accent { --bc: var(--accent); } .bd-info { --bc: var(--c-try); } .bd-warn { --bc: var(--c-if); }
+.bd-danger { --bc: var(--c-no); } .bd-good { --bc: var(--c-yes); } .bd-muted { --bc: var(--ink-3); }
+.bd-ghost { --bc: var(--ink-4); border-style: dashed; background: transparent; font-weight: 500; }
+
+/* ---------- gauges ------------------------------------------------------- */
+.gauge { position: relative; display: inline-grid; place-items: center; width: 46px; height: 46px; flex: none; }
+.gauge svg, .ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gauge .trk, .ring .trk { fill: none; stroke: color-mix(in oklab, var(--g, var(--rc)) 17%, transparent); stroke-width: 4; }
+.gauge .val, .ring .val { fill: none; stroke: var(--g, var(--rc)); stroke-width: 4; stroke-linecap: round; }
+.gauge b { font: 800 14px/1 var(--font-ui); color: var(--ink); margin-top: -5px; }
+.gauge small { position: absolute; bottom: 8px; font: 800 8.5px/1 var(--font-ui); color: var(--g); letter-spacing: .05em; }
+.gauge.sm { width: 34px; height: 34px; }
+.gauge.sm b { font-size: 11px; margin-top: -4px; }
+.gauge.sm small { font-size: 7px; bottom: 5px; }
+.gauge.sm .trk, .gauge.sm .val { stroke-width: 4.6; }
+.ring { position: relative; display: inline-grid; place-items: center; width: 74px; height: 74px; --rc: var(--c-yes); }
+.ring.r-mid { --rc: var(--c-if); } .ring.r-low { --rc: var(--c-no); }
+.ring .trk, .ring .val { stroke-width: 3.6; }
+.ring b { font: 800 20px/1 var(--font-ui); letter-spacing: -.02em; }
+.ring b i { font-size: .55em; font-style: normal; color: var(--ink-3); margin-left: 1px; }
+
+/* ---------- declaration cards ------------------------------------------- */
+.card {
+  --kc: var(--k-fn);
+  font: 15px/1.6 var(--font-ui); letter-spacing: normal;
+  position: relative; margin: 30px 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl);
+  box-shadow: var(--shadow-s); overflow: clip; transition: box-shadow .2s, border-color .2s;
+}
+.card.cls { --kc: var(--k-cls); }
+.card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: linear-gradient(180deg, var(--kc), color-mix(in oklab, var(--kc) 30%, transparent)); z-index: 1; }
+.card:target { border-color: var(--kc); box-shadow: var(--shadow-m), 0 0 0 3px color-mix(in oklab, var(--kc) 22%, transparent); }
+.card.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--kc) 60%, transparent); } 100% { box-shadow: 0 0 0 18px transparent; } }
+.dh { position: relative; padding: 20px 22px 18px 28px; background: linear-gradient(135deg, color-mix(in oklab, var(--kc) 10%, var(--surface)), var(--surface) 62%); border-bottom: 1px solid var(--line); }
+.card.collapsed > .dh { border-bottom-color: transparent; }
+.dh-top { display: flex; align-items: flex-start; gap: 16px; }
+.kind {
+  --kc: var(--k-fn);
+  width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; flex: none; color: #fff;
+  background: linear-gradient(140deg, var(--kc), color-mix(in oklab, var(--kc) 55%, var(--accent-2)));
+  box-shadow: 0 10px 20px -10px color-mix(in oklab, var(--kc) 80%, transparent), inset 0 1px 0 rgb(255 255 255 / .28);
+}
+.kind .i { width: 25px; height: 25px; }
+.kind.sm { width: 26px; height: 26px; border-radius: 9px; }
+.kind.sm .i { width: 14px; height: 14px; }
+.k-cls { --kc: var(--k-cls); } .k-fn { --kc: var(--k-fn); } .k-m { --kc: var(--k-m); } .k-p { --kc: var(--k-p); }
+.dh-title { flex: 1; min-width: 0; }
+.decos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; }
+.deco { font-size: 12px; padding: 1px 10px; border-radius: 99px; background: var(--surface-3); border: 1px solid var(--line); color: var(--ink-2); max-width: 100%; overflow-wrap: anywhere; }
+.dname { margin: 0; font: 800 25px/1.2 var(--font-mono); letter-spacing: -.03em; overflow-wrap: anywhere; }
+.dname .qp { color: var(--ink-4); font-weight: 600; font-size: .7em; letter-spacing: -.01em; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.badges:empty { display: none; }
+.dstats { display: flex; align-items: center; gap: 16px; flex: none; padding-top: 2px; }
+.stat { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.stat b { font: 800 17px var(--font-ui); letter-spacing: -.02em; }
+.stat small { font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+.tog, .cpy {
+  width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; flex: none;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-3); transition: background .12s, color .12s, transform .15s;
+}
+.tog:hover, .cpy:hover { color: var(--ink); background: var(--surface-3); }
+.tog .i { transition: transform .2s; }
+.card.collapsed > .dh .tog .i { transform: rotate(-90deg); }
+.cpy.done { color: var(--c-yes); border-color: var(--c-yes); }
+.sig {
+  margin: 16px 0 0; padding: 13px 16px; border-radius: var(--r-md); background: var(--code-bg); border: 1px solid var(--line);
+  font: 13.5px/1.65 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; position: relative;
+}
+.sig code { font: inherit; }
+.sig .hdr-note { display: block; margin: 6px 0 0; }
+.sum { margin: 14px 2px 0; font-size: 16.5px; line-height: 1.55; color: var(--ink-2); }
+.rel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 14px; }
+.rel-l { display: inline-flex; align-items: center; gap: 5px; margin-right: 2px; font: 700 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.rel-l:not(:first-child) { margin-left: 12px; }
+.base { display: inline-flex; padding: 1px 10px; border-radius: 99px; background: var(--surface-3); border: 1px solid var(--line); font-size: 12.5px; }
+.base.local { background: color-mix(in oklab, var(--accent) 11%, transparent); border-color: color-mix(in oklab, var(--accent) 30%, transparent); color: var(--accent); }
+.base.local:hover { background: color-mix(in oklab, var(--accent) 20%, transparent); }
+.base.kw { border-style: dashed; background: transparent; }
+
+.cb { padding: 4px 22px 24px 28px; }
+.card.collapsed > .cb { display: none; }
+.sec { margin-top: 22px; min-width: 0; }
+.sh { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font: 700 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.sh .i { width: 16px; height: 16px; color: var(--kc); }
+.sh small { font: 600 11px var(--font-ui); letter-spacing: 0; text-transform: none; padding: 0 8px; border-radius: 99px; background: var(--surface-3); color: var(--ink-3); }
+
+/* ---------- tables -------------------------------------------------------- */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.ptable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+.ptable th { position: relative; text-align: left; padding: 9px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font: 700 10.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.ptable td { padding: 10px 14px; vertical-align: top; border-bottom: 1px solid var(--line); line-height: 1.5; }
+.ptable tbody tr:last-child td { border-bottom: 0; }
+.ptable tbody tr { transition: background .1s; }
+.ptable tbody tr:hover td { background: var(--hover); }
+.ptable .pn { white-space: nowrap; width: 1%; }
+.ptable .pn code { font-weight: 700; font-size: 13px; color: var(--ink); }
+.ptable .pt { min-width: 120px; }
+.ptable .pt .ty { overflow-wrap: anywhere; }
+.ptable .pd { min-width: 90px; }
+.ptable .pc { width: 100%; min-width: 200px; color: var(--ink-2); }
+.pk { display: inline-block; margin-left: 7px; padding: 0 8px; border-radius: 99px; font: 600 10.5px/1.75 var(--font-ui); color: var(--ink-3); background: var(--surface-3); white-space: nowrap; vertical-align: 1px; }
+.pk.sc-instance { color: var(--k-m); background: color-mix(in oklab, var(--k-m) 13%, transparent); }
+.pk.sc-class { color: var(--k-cls); background: color-mix(in oklab, var(--k-cls) 13%, transparent); }
+.pk.sc-field { color: var(--accent-2); background: color-mix(in oklab, var(--accent-2) 14%, transparent); }
+.pk.sc-member { color: var(--c-match); background: color-mix(in oklab, var(--c-match) 12%, transparent); }
+.pk.sc-documented { color: var(--ink-3); border: 1px dashed var(--line-2); background: transparent; }
+code.ty { font-size: 12.5px; color: var(--tk-ty); }
+code.ty.from-doc { font-style: italic; }
+code.ty sup { margin-left: 4px; padding: 0 5px; border-radius: 99px; font: 600 9.5px var(--font-ui); background: var(--surface-3); color: var(--ink-3); vertical-align: 2px; font-style: normal; }
+code.ty.inferred { color: var(--ink-2); opacity: .9; }
+code.dv { font-size: 12.5px; }
+code.dv.from-doc { color: var(--ink-3); font-style: italic; }
+.none { color: var(--ink-4); font-size: 12.5px; }
+.dim { color: var(--ink-3); font-size: 12.5px; }
+.req { display: inline-block; padding: 0 9px; border-radius: 99px; font: 700 10.5px/1.8 var(--font-ui); letter-spacing: .05em; text-transform: uppercase; color: var(--c-no); background: color-mix(in oklab, var(--c-no) 11%, transparent); }
+.cmt { color: var(--tk-cm); font-style: italic; }
+.cmt::before { content: "# "; opacity: .6; }
+.pc p { margin: 0 0 .4em; } .pc p:last-child { margin-bottom: 0; }
+code.ic { font-size: .88em; padding: 1px 6px; border-radius: 6px; background: var(--surface-3); border: 1px solid color-mix(in oklab, var(--line) 70%, transparent); color: var(--ink); }
+a.xref code.ic { color: var(--accent); background: color-mix(in oklab, var(--accent) 10%, transparent); border-color: color-mix(in oklab, var(--accent) 25%, transparent); }
+a.xref:hover code.ic { background: color-mix(in oklab, var(--accent) 20%, transparent); }
+.mtable .mn { white-space: nowrap; width: 1%; }
+.mtable .mn a { display: inline-flex; align-items: baseline; gap: 2px; margin-right: 6px; }
+.mtable .mn code { font-weight: 700; font-size: 13px; color: var(--ink); }
+.mtable .mn a:hover code { color: var(--accent); }
+.mtable .ms { color: var(--ink-3); font: 12px var(--font-mono); max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mtable .mc { width: 1%; text-align: center; }
+.mtable .ml { width: 1%; text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.mtable .mc .gauge { vertical-align: middle; }
+.mtable .bd { margin-right: 4px; font-size: 10.5px; padding: 0 8px 0 6px; }
+
+/* ---------- inputs / outputs --------------------------------------------- */
+.io { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 18px; }
+.io-c { --ic: var(--c-ret); border: 1px solid color-mix(in oklab, var(--ic) 28%, var(--line)); border-radius: var(--r-md); background: color-mix(in oklab, var(--ic) 5%, var(--surface)); padding: 12px 16px 14px; min-width: 0; }
+.io-yield { --ic: var(--c-try); } .io-raise { --ic: var(--c-raise); }
+.io-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--ic); font: 700 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.io-h .i { width: 16px; height: 16px; }
+.io-b { font-size: 13.5px; color: var(--ink-2); }
+.io-b p { margin: 6px 0 0; }
+.io-b .ty { font-size: 13px; font-weight: 600; }
+.rn { font-weight: 700; }
+.io-c.is-inferred .io-b { opacity: .8; }
+.io-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.io-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 13.5px; color: var(--ink-2); }
+code.ex { font-weight: 700; font-size: 12.5px; padding: 1px 9px; border-radius: 99px; color: var(--c-raise); background: color-mix(in oklab, var(--c-raise) 10%, transparent); border: 1px solid color-mix(in oklab, var(--c-raise) 25%, transparent); }
+.io-list li.from-code code.ex { border-style: dashed; background: transparent; }
+.touches { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; padding: 10px 14px; border: 1px dashed var(--line-2); border-radius: var(--r-md); }
+.tc-h { font: 800 14px var(--font-mono); color: var(--tk-sl); font-style: italic; }
+.tc-row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tc-row > .i { width: 15px; height: 15px; color: var(--ink-3); }
+.tc-l { font: 700 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); margin-right: 2px; }
+.tch { font-size: 12px; padding: 1px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); }
+.tch.w { color: var(--c-if); background: color-mix(in oklab, var(--c-if) 10%, transparent); border-color: color-mix(in oklab, var(--c-if) 30%, transparent); }
+.tch.r { color: var(--c-try); background: color-mix(in oklab, var(--c-try) 9%, transparent); border-color: color-mix(in oklab, var(--c-try) 28%, transparent); }
+.ext-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.ext-row > .i { width: 15px; height: 15px; color: var(--ink-3); }
+code.ext { font-size: 12px; padding: 1px 9px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); }
+code.ext i { font-style: normal; color: var(--ink-3); margin-left: 5px; font-size: .9em; }
+
+/* ---------- widgets ------------------------------------------------------ */
+.fp { display: grid; gap: 9px; }
+.fp-bar { display: flex; gap: 3px; height: 18px; }
+.fp-s { --fc: var(--line-2); border-radius: 7px; background: var(--fc); min-width: 7px; transition: transform .14s, filter .14s; }
+.fp-s:hover { transform: scaleY(1.4); filter: brightness(1.1) saturate(1.15); }
+.fp-if { --fc: var(--c-if); } .fp-loop { --fc: var(--c-loop); } .fp-try { --fc: var(--c-try); } .fp-with { --fc: var(--c-with); }
+.fp-match { --fc: var(--c-match); } .fp-ret { --fc: var(--c-ret); } .fp-raise { --fc: var(--c-raise); } .fp-def { --fc: var(--accent); }
+.fp-assign { --fc: color-mix(in oklab, var(--ink-3) 50%, transparent); } .fp-call { --fc: color-mix(in oklab, var(--k-fn) 55%, var(--ink-4)); } .fp-other { --fc: var(--line-2); }
+.fp-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--ink-3); }
+.fp-k { display: inline-flex; align-items: center; gap: 6px; }
+.fp-k i { width: 10px; height: 10px; border-radius: 4px; background: var(--fc, var(--line-2)); display: inline-block; }
+.cmap { margin-bottom: 14px; }
+.cm-bar { display: flex; gap: 4px; height: 40px; }
+.cm-b {
+  min-width: 10px; border-radius: 11px; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 0 6px;
+  background: color-mix(in oklab, var(--g) 15%, var(--surface)); border: 1px solid color-mix(in oklab, var(--g) 50%, transparent);
+  font: 600 11px var(--font-mono); color: color-mix(in oklab, var(--g) 55%, var(--ink)); transition: transform .14s, background .14s;
+}
+.cm-b span { overflow: hidden; white-space: nowrap; }
+.cm-b:hover { transform: translateY(-3px); background: color-mix(in oklab, var(--g) 28%, var(--surface)); }
+.cm-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; margin-top: 9px; font-size: 12px; color: var(--ink-3); }
+.cm-k { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; color: var(--ink-2); }
+.cm-k i { width: 10px; height: 10px; border-radius: 4px; background: var(--g); display: inline-block; }
+.conn { display: block; width: 100%; height: auto; margin: 6px auto 4px; }
+.conn .edge { fill: none; stroke-width: 1.8; stroke: var(--line-2); }
+.conn .e-in { stroke: color-mix(in oklab, var(--accent) 55%, var(--line-2)); }
+.conn .e-out { stroke: color-mix(in oklab, var(--k-fn) 60%, var(--line-2)); }
+.conn .arrow { fill: var(--ink-3); }
+.conn .node rect { fill: var(--surface-2); stroke: var(--line-2); stroke-width: 1.3; transition: fill .12s, stroke .12s; }
+.conn .node text { font: 600 11.5px var(--font-mono); fill: var(--ink-2); pointer-events: none; }
+.conn a.node:hover rect { fill: color-mix(in oklab, var(--g) 16%, var(--surface)); stroke: var(--g); }
+.conn .n-this rect { fill: color-mix(in oklab, var(--g) 16%, var(--surface)); stroke: var(--g); stroke-width: 2; }
+.conn .n-this text { fill: var(--ink); font-weight: 800; }
+.conn .n-none rect { fill: transparent; stroke-dasharray: 4 4; }
+.conn .n-none text, .conn .n-more text { fill: var(--ink-4); font-weight: 500; font-family: var(--font-ui); }
+.treemap svg { display: block; width: 100%; height: auto; }
+.tm-cbg { fill: color-mix(in oklab, var(--accent) 8%, var(--surface)); stroke: color-mix(in oklab, var(--accent) 28%, var(--line)); stroke-width: 1; }
+.tm-ct { font: 700 12px var(--font-ui); fill: var(--ink-2); pointer-events: none; }
+.tm-leaf rect { fill: color-mix(in oklab, var(--g) 26%, var(--surface)); stroke: color-mix(in oklab, var(--g) 62%, transparent); stroke-width: 1; transition: filter .12s; }
+.tm-leaf text { font: 600 11px var(--font-mono); fill: var(--ink); pointer-events: none; }
+.tm-leaf .tm-sub { font: 500 9.5px var(--font-ui); fill: var(--ink-2); opacity: .85; }
+.tm-leaf:hover rect { filter: brightness(1.1) saturate(1.25); stroke-width: 2; }
+.gbar { display: flex; gap: 3px; height: 30px; margin: 16px 0 4px; }
+.gb-s { flex: 1; min-width: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 9px; background: color-mix(in oklab, var(--g) 18%, var(--surface)); border: 1px solid color-mix(in oklab, var(--g) 50%, transparent); font-size: 12px; color: color-mix(in oklab, var(--g) 60%, var(--ink)); }
+.gb-s b { font-weight: 800; } .gb-s i { font-style: normal; opacity: .85; font-weight: 600; }
+.chords { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.chords svg { width: 100%; max-width: 560px; height: auto; }
+.cd-0 { --cd: #6366f1; } .cd-1 { --cd: #ec4899; } .cd-2 { --cd: #14b8a6; } .cd-3 { --cd: #f59e0b; }
+.cd-4 { --cd: #8b5cf6; } .cd-5 { --cd: #0ea5e9; } .cd-6 { --cd: #ef4444; } .cd-7 { --cd: #84cc16; }
+.cd-arc { fill: none; stroke: var(--cd); stroke-width: 6; stroke-linecap: round; opacity: .9; }
+.cd-chord { fill: none; stroke: var(--cd); stroke-opacity: .42; stroke-width: 1.8; transition: stroke-opacity .15s, stroke-width .15s; }
+.cd-chord.dim { stroke-opacity: .07; }
+.cd-chord.hot { stroke-opacity: .95; stroke-width: 3; }
+.cd-dot { fill: var(--g); stroke: var(--surface); stroke-width: 2; }
+.cd-node text { font: 500 11px var(--font-mono); fill: var(--ink-2); }
+.cd-node a:hover text { fill: var(--accent); font-weight: 700; }
+.cd-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12px; color: var(--ink-3); }
+.cd-k { display: inline-flex; align-items: center; gap: 6px; }
+.cd-k i { width: 11px; height: 11px; border-radius: 4px; background: var(--cd); display: inline-block; }
+
+/* health panel */
+.rings { display: flex; gap: 26px; justify-content: center; margin: 2px 0 6px; }
+.rg { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+.worst h3, .imp-g h3 { margin: 16px 0 8px; font: 700 11px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.wl { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; margin-bottom: 6px; border: 1px solid var(--line); background: var(--surface-2); transition: border-color .12s, transform .12s; }
+.wl:hover { border-color: var(--g); transform: translateX(2px); }
+.wl b { font: 700 13px var(--font-mono); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wl span { color: var(--ink-3); font-size: 12px; }
+.facts { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 7px; font-size: 13.5px; color: var(--ink-2); }
+.facts li { display: flex; align-items: center; gap: 9px; }
+.facts .i { color: var(--accent); }
+.facts a:hover code { color: var(--accent); }
+.facts code { font-size: .9em; }
+
+/* api index */
+.ai-n { white-space: nowrap; width: 1%; }
+.ai-n a { display: inline-flex; align-items: center; gap: 10px; }
+.ai-n b { font: 700 13.5px var(--font-mono); }
+.ai-n a:hover b { color: var(--accent); }
+.ai-x { display: inline-block; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; margin: 0 8px; color: var(--ink-3); font: 12px var(--font-mono); }
+.ai-n .bd { margin-right: 4px; font-size: 10.5px; padding: 0 8px 0 6px; }
+
+/* imports */
+.imp-c { display: flex; flex-wrap: wrap; gap: 6px; }
+.imp-g:first-child h3 { margin-top: 0; }
+.imp-g h3 small { margin-left: 7px; font-size: 10.5px; padding: 0 7px; border-radius: 99px; background: var(--surface-3); letter-spacing: 0; }
+.imp { --ic: var(--ink-3); display: inline-flex; align-items: baseline; gap: 7px; padding: 2px 11px; border-radius: 99px; font: 12.5px var(--font-mono); background: color-mix(in oklab, var(--ic) 9%, var(--surface)); border: 1px solid color-mix(in oklab, var(--ic) 25%, transparent); max-width: 100%; }
+.imp b { font-weight: 700; color: var(--ink); }
+.imp i { font-style: normal; color: var(--ink-3); font-size: .92em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-stdlib { --ic: var(--c-try); } .imp-third { --ic: var(--c-match); } .imp-local { --ic: var(--c-yes); } .imp-future { --ic: var(--c-if); }
+
+/* todo board */
+.todo-list { display: grid; gap: 8px; }
+.todo-i { --tc: var(--c-if); display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 9px 12px; border-radius: 12px; border: 1px solid color-mix(in oklab, var(--tc) 28%, var(--line)); background: color-mix(in oklab, var(--tc) 6%, var(--surface)); transition: transform .12s; }
+.todo-i:hover { transform: translateX(3px); }
+.todo-i small { color: var(--ink-3); font-size: 11.5px; }
+.todo-t { font-size: 13.5px; color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
+.todo-tag { font: 800 10.5px var(--font-ui); letter-spacing: .08em; padding: 2px 9px; border-radius: 99px; color: #fff; background: var(--tc, var(--c-if)); }
+.td-fixme, .td-bug { --tc: var(--c-no); } .td-hack, .td-xxx { --tc: var(--c-loop); } .td-note, .td-review { --tc: var(--c-try); } .td-optimize { --tc: var(--c-with); }
+
+/* ---------- docstring prose ---------------------------------------------- */
+.prose { font-size: 14.5px; color: var(--ink-2); max-width: 88ch; }
+.prose p { margin: 0 0 .75em; }
+.prose ul, .prose ol { margin: 0 0 .9em; padding-left: 1.4em; }
+.prose li { margin: .2em 0; }
+.prose li::marker { color: var(--accent); }
+.prose strong { color: var(--ink); }
+.prose a { color: var(--accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent); text-underline-offset: 3px; }
+.prose > :last-child { margin-bottom: 0; }
+.snip { margin: 0 0 .9em; padding: 12px 16px; border-radius: var(--r-md); background: var(--code-bg); border: 1px solid var(--line); font: 13px/1.6 var(--font-mono); overflow: auto; color: var(--ink); }
+.snip code { font: inherit; white-space: pre; }
+.doctest .dt-l { display: block; white-space: pre; }
+.doctest .dt-p { color: var(--accent); font-weight: 700; user-select: none; }
+.doctest .dt-o { color: var(--ink-3); }
+.adm { --ac: var(--c-try); margin: 0 0 .9em; padding: 10px 16px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in oklab, var(--ac) 26%, var(--line)); border-left: 4px solid var(--ac); background: color-mix(in oklab, var(--ac) 6%, var(--surface)); font-size: 14px; }
+.adm-warning { --ac: var(--c-no); } .adm-example { --ac: var(--c-with); } .adm-todo { --ac: var(--c-if); } .adm-seealso, .adm-refs { --ac: var(--c-loop); } .adm-other { --ac: var(--ink-3); }
+.adm-t { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--ac); font: 700 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.adm-t .i { width: 16px; height: 16px; }
+.adm > :last-child { margin-bottom: 0; }
+.adm .snip { background: color-mix(in oklab, var(--code-bg) 80%, var(--surface)); }
+details.more { margin-top: 18px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+details.more > summary { display: flex; align-items: center; gap: 8px; padding: 9px 14px; cursor: pointer; list-style: none; font: 700 12px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary small { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-3); }
+details.more[open] > summary { border-bottom: 1px solid var(--line); }
+details.more > .prose { padding: 14px 16px 6px; }
+.chv { transition: transform .18s; }
+details:not([open]) > summary > .chv, details.more:not([open]) > summary .chv { transform: rotate(-90deg); }
+
+/* ---------- implementation drawer ---------------------------------------- */
+.impl { margin-top: 24px; }
+.ih { display: flex; align-items: center; gap: 9px; padding: 8px 4px; cursor: pointer; list-style: none; font: 700 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.ih::-webkit-details-marker { display: none; }
+.ih .i:not(.chv) { color: var(--kc); }
+.ih small { font: 600 11px var(--font-ui); letter-spacing: 0; text-transform: none; padding: 0 8px; border-radius: 99px; background: var(--surface-3); }
+.ih:hover { color: var(--ink); }
+
+/* nested cards live inside the flow */
+.impl .card { margin: 18px 10px 18px 0; border-radius: var(--r-lg); box-shadow: none; background: var(--surface); }
+.impl .card .dh { padding: 14px 16px 14px 22px; }
+.impl .card .kind { width: 38px; height: 38px; border-radius: 13px; }
+.impl .card .kind .i { width: 20px; height: 20px; }
+.impl .card .dname { font-size: 19px; }
+.impl .card .cb { padding: 2px 16px 18px 22px; }
+.impl .card .sum { font-size: 15px; }
+.impl .card.n2 .dh, .impl .card.n3 .dh { padding: 12px 14px 12px 20px; }
+.impl .card.n3 { border-style: dashed; }
+
+/* ---------- small screens: tables become stacked cards ------------------- */
+@media (max-width: 720px) {
+  .dh { padding: 16px 14px 14px 20px; }
+  .dh-top { flex-wrap: wrap; }
+  .dstats { order: 3; width: 100%; padding-left: 64px; }
+  .dname { font-size: 21px; }
+  .cb { padding: 2px 14px 18px 20px; }
+  .ptable thead { display: none; }
+  .ptable, .ptable tbody, .ptable tr, .ptable td { display: block; width: 100%; }
+  .ptable tr { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .ptable tr:last-child { border-bottom: 0; }
+  .ptable td { padding: 3px 0; border: 0; white-space: normal !important; width: 100% !important; }
+  .ptable td[data-label]::before { content: attr(data-label); display: inline-block; min-width: 86px; margin-right: 8px; font: 700 10px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-4); }
+  .ptable tbody tr:hover td { background: transparent; }
+  .insights > summary small { display: none; }
+}
+
+/* ---------- compact returns, insights drawer ------------------------------ */
+.io-inline { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 16px; padding: 8px 14px; border-radius: var(--r-md); border: 1px solid color-mix(in oklab, var(--c-ret) 26%, var(--line)); background: color-mix(in oklab, var(--c-ret) 5%, var(--surface)); font-size: 13.5px; color: var(--ink-2); }
+.io-inline > .i { width: 16px; height: 16px; color: var(--c-ret); }
+.io-inline > b { margin-right: 2px; color: var(--c-ret); font: 700 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.io-inline .ty { font-size: 13px; font-weight: 600; }
+.insights { margin-top: 18px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.insights > summary { display: flex; align-items: center; gap: 10px; padding: 8px 14px; cursor: pointer; list-style: none; font: 700 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.insights > summary::-webkit-details-marker { display: none; }
+.insights > summary > .i:not(.chv) { width: 16px; height: 16px; color: var(--kc); }
+.insights > summary > .chv { width: 14px; height: 14px; color: var(--ink-3); }
+.insights > summary small { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-3); font-size: 12.5px; }
+.insights > summary:hover { color: var(--ink); }
+.insights[open] > summary { border-bottom: 1px solid var(--line); }
+.insights[open] .fp-mini { display: none; }
+.fp-mini { display: inline-flex; gap: 2px; width: 128px; height: 8px; margin-left: 4px; flex: none; }
+.fp-mini .fp-s { min-width: 3px; height: 8px; border-radius: 3px; transition: none; transform: none; }
+.ins-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px 30px; padding: 14px 16px 18px; }
+.ins-col { min-width: 0; }
+.ins-col h5 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font: 700 11px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.ins-col h5 .i { width: 15px; height: 15px; color: var(--kc); }
+.ins-col h5 small { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-4); }
+.impl.tiny { margin-top: 18px; padding-top: 12px; border-top: 1px dashed var(--line-2); }
+
+/* ---- constants panel: a compact table that wraps instead of scrolling ------ */
+.ctable { table-layout: fixed; }
+.ctable td, .ctable th { overflow-wrap: anywhere; }
+.ctable .dv { white-space: pre-wrap; }
+.ctable .cmt { display: block; margin-top: 2px; color: var(--ink-3); font: italic 11.5px/1.45 var(--font-ui); }
+.ctable .cmt::before { content: "# "; font-family: var(--font-mono); font-style: normal; opacity: .5; }
+
+/* ==========================================================================
+   The flow: code rendered by control-flow structure
+   ========================================================================== */
+
+.flow { --gw: var(--gutter, 54px); font: 13px/1.62 var(--font-mono); color: var(--ink); min-width: 0; }
+.run { display: flex; flex-direction: column; min-width: 0; }
+.mod-flow > .run {
+  margin: 16px 0; padding: 10px 8px 10px 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-s);
+}
+.mod-flow > .card { margin: 26px 0; }
+.mod-flow > .box, .mod-flow > .if, .mod-flow > .try, .mod-flow > .guard { margin-right: 0; }
+
+/* ---------- rows ---------------------------------------------------------- */
+.ln { position: relative; display: flex; align-items: flex-start; min-width: 0; padding-right: 10px; border-radius: 7px; }
+.ln:hover { background: var(--hover); }
+.ln.gap { margin-top: .8em; }
+.g {
+  flex: none; width: var(--gw); height: 1.62em; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 6px;
+  color: var(--ink-4); font: normal 500 10.5px var(--font-mono); user-select: none;
+}
+.g::before { content: attr(data-n); }
+.g .i { width: 13px; height: 13px; }
+.c { flex: 0 1 auto; min-width: 0; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.run .hc > .c { min-width: var(--cw, 0); }
+.tc {
+  flex: 1 1 16ch; min-width: 16ch; margin-left: 14px; padding-top: 1px; color: var(--ink-3); font: italic 12.2px/1.6 var(--font-ui);
+}
+.tc::before { content: "# "; opacity: .5; font-family: var(--font-mono); font-style: normal; }
+.tc.pr { font: 11px/1.7 var(--font-mono); opacity: .6; font-style: normal; }
+.tc.td { color: var(--c-if); font-weight: 700; font-style: normal; }
+.no-lines .g::before { display: none; }
+.no-lines .g { width: 28px; justify-content: flex-end; }
+.no-lines .flow { --gw: 28px; }
+.no-comments .tc, .no-comments .note:not(.todo), .no-comments .hdr-note { display: none; }
+
+/* exits leave the flow: return / raise / break / continue */
+.x { --xc: var(--c-ret); background: color-mix(in oklab, var(--xc) 9%, transparent); box-shadow: inset 3px 0 0 var(--xc); border-radius: 4px 9px 9px 4px; margin-block: 1px; }
+.x:hover { background: color-mix(in oklab, var(--xc) 15%, transparent); }
+.x-raise, .x-exit { --xc: var(--c-raise); }
+.x-brk, .x-cont { --xc: var(--c-loop); }
+.x .g { color: var(--xc); }
+.x .c > i.k:first-child { color: var(--xc); font-weight: 800; }
+.st { --sc: var(--ink-3); }
+.st .g { color: var(--sc); }
+.st-assert { --sc: var(--c-yes); } .st-imp { --sc: var(--c-try); } .st-glob { --sc: var(--c-loop); } .st-del { --sc: var(--c-no); }
+.st-await { --sc: var(--c-try); } .st-yield { --sc: var(--c-with); } .st-log { --sc: var(--ink-4); }
+.st-log > .c { opacity: .78; }
+.dim > .c { opacity: .5; }
+
+/* ---------- notes (comments) ---------------------------------------------- */
+.note {
+  --nc: var(--ink-3); position: relative; display: flex; gap: 10px; align-items: flex-start; margin: 7px 10px 7px var(--gw); padding: 7px 13px 7px 11px;
+  border-radius: 11px; background: color-mix(in oklab, var(--nc) 7%, var(--surface)); border: 1px solid color-mix(in oklab, var(--nc) 18%, var(--line));
+  font: 13px/1.5 var(--font-ui); color: var(--ink-2); min-width: 0;
+}
+.note > .i { width: 15px; height: 15px; margin-top: 2px; color: var(--c-yes); }
+.note { --nc: var(--c-yes); }
+.note .nt { min-width: 0; overflow-wrap: anywhere; }
+.note .nl { display: block; }
+.note code { font-size: .92em; padding: 0 5px; border-radius: 5px; background: color-mix(in oklab, var(--nc) 12%, transparent); }
+.note.todo { --nc: var(--c-if); align-items: baseline; border-left: 3px solid var(--c-if); }
+.todo-tag { flex: none; font: 800 10px/1.9 var(--font-ui); letter-spacing: .08em; padding: 0 9px; border-radius: 99px; color: #fff; background: var(--c-if); }
+.note.ccode { --nc: var(--ink-3); background: transparent; border-style: dashed; align-items: flex-start; padding: 5px 12px; }
+.note.ccode .c { opacity: .6; filter: saturate(.5); font-size: 12.5px; }
+.cc-tag { flex: none; font: 700 9.5px/2 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); padding: 0 8px; border-radius: 99px; background: var(--surface-3); }
+.note.pragma { margin-block: 2px; padding: 0 0 0 4px; background: none; border: 0; font: 11px var(--font-mono); opacity: .55; }
+.rule { display: flex; align-items: center; gap: 14px; margin: 22px 0 12px; padding-left: var(--gw); color: var(--ink-3); }
+.rule::before, .rule::after { content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, var(--line-2)); }
+.rule::after { background: linear-gradient(270deg, transparent, var(--line-2)); }
+.rule::before { flex: 0 0 24px; }
+.rule span { padding: 4px 14px; border-radius: 99px; background: var(--surface-3); border: 1px solid var(--line); font: 700 11px/1.5 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+
+/* ---------- tags ---------------------------------------------------------- */
+.tag {
+  --tc: var(--c-if); display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 1px 10px 1px 8px; border-radius: 99px;
+  font: 800 10px/1.9 var(--font-ui); letter-spacing: .09em; white-space: nowrap; color: color-mix(in oklab, var(--tc) 80%, var(--ink));
+  background: color-mix(in oklab, var(--tc) 14%, var(--surface)); border: 1px solid color-mix(in oklab, var(--tc) 34%, transparent);
+}
+.tag .i { width: 12px; height: 12px; }
+.tag b { font-weight: 800; }
+.t-if { --tc: var(--c-if); } .t-else { --tc: var(--c-else); } .t-loop { --tc: var(--c-loop); } .t-with { --tc: var(--c-with); }
+.t-try { --tc: var(--c-try); } .t-except { --tc: var(--c-except); } .t-finally { --tc: var(--c-finally); } .t-match, .t-case { --tc: var(--c-match); } .t-main { --tc: var(--c-main); }
+.otherwise { color: var(--ink-3); font: italic 12.5px var(--font-ui); }
+.otherwise code { font-style: normal; font-size: .95em; }
+.hint { color: var(--ink-3); font: 12.5px var(--font-ui); }
+.hint code { font-size: .95em; }
+.cond { flex: 1 1 auto; min-width: 0; padding: 1px 0; }
+.wis { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.wi { display: block; }
+.exc { flex: 1 1 auto; min-width: 0; }
+.cond-rows { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.cr { display: flex; align-items: baseline; gap: 8px; }
+.cr .c { flex: 1 1 auto; }
+.cop { flex: none; width: 3.2em; text-align: right; font: 800 9.5px var(--font-ui); letter-spacing: .09em; color: var(--c-if); }
+.cop.first { visibility: hidden; }
+
+/* ---------- boxes: loops, with, gates ------------------------------------ */
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
+.bh { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-width: 0; }
+.bh > .tc { margin-left: auto; flex: 0 1 auto; }
+.box {
+  --bc: var(--c-loop); margin: 10px 10px 10px 0; border: 1px solid color-mix(in oklab, var(--bc) 28%, var(--line)); border-left: 4px solid var(--bc);
+  border-radius: var(--r-md); background: color-mix(in oklab, var(--bc) 2.6%, var(--surface)); min-width: 0;
+}
+.box > .bh { padding: 6px 12px 6px 8px; cursor: pointer; background: color-mix(in oklab, var(--bc) 8%, var(--surface)); border-radius: 0 var(--r-md) 0 0; }
+.box:not([open]) > .bh { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.box[open] > .bh { border-bottom: 1px solid color-mix(in oklab, var(--bc) 16%, var(--line)); }
+.box > .bh:hover { background: color-mix(in oklab, var(--bc) 13%, var(--surface)); }
+.box > .bh .chv { width: 14px; height: 14px; color: var(--bc); opacity: .8; }
+.box > .bb { padding: 6px 0 8px 10px; min-width: 0; }
+.b-with { --bc: var(--c-with); } .b-if { --bc: var(--c-if); } .b-match { --bc: var(--c-match); } .b-main { --bc: var(--c-main); }
+.b-main { border-width: 1px; border-left-width: 4px; background: linear-gradient(135deg, color-mix(in oklab, var(--c-main) 7%, var(--surface)), var(--surface)); }
+.b-loop > .bb { position: relative; margin: 8px 0 8px 18px; padding: 0 0 0 10px; border-left: 2px dashed color-mix(in oklab, var(--c-loop) 42%, transparent); }
+.b-loop > .bb::before {
+  content: ""; position: absolute; left: -7px; top: -8px; border: 6px solid transparent; border-top: 0; border-bottom: 8px solid color-mix(in oklab, var(--c-loop) 62%, transparent);
+}
+.sub { margin: 10px 10px 4px -10px; padding-left: 10px; border-top: 1px dashed color-mix(in oklab, var(--c-else) 40%, var(--line)); }
+.sub-h { display: flex; align-items: center; gap: 8px; padding: 8px 0 4px; }
+.sub-b { padding-left: 2px; }
+
+/* ---------- guards: ``if cond: return`` --------------------------------- */
+.guard {
+  display: flex; flex-wrap: wrap; align-items: stretch; margin: 6px 10px 6px 0; border-radius: var(--r-md); overflow: hidden; background: var(--surface);
+  border: 1px solid color-mix(in oklab, var(--c-if) 32%, var(--line));
+}
+.gc { flex: 1 1 280px; max-width: 100%; display: flex; align-items: center; gap: 9px; padding: 5px 12px 5px 9px; background: color-mix(in oklab, var(--c-if) 9%, var(--surface)); min-width: 0; }
+.gc .cond { flex: 1 1 auto; }
+.garrow { flex: none; display: grid; place-items: center; width: 26px; color: var(--c-if); background: linear-gradient(90deg, color-mix(in oklab, var(--c-if) 9%, var(--surface)), var(--surface)); }
+.garrow .i { width: 15px; height: 15px; }
+.gt { flex: 2 1 300px; min-width: 0; padding: 2px 4px 2px 0; }
+.gt .run { padding: 0; }
+.gt .ln { padding-block: 0; }
+.guard.g-return .garrow, .guard.g-return .gt { background-color: color-mix(in oklab, var(--c-ret) 5%, transparent); }
+.guard.g-raise, .guard.g-exit { border-color: color-mix(in oklab, var(--c-raise) 34%, var(--line)); }
+.guard.g-raise .gc, .guard.g-exit .gc { background: color-mix(in oklab, var(--c-raise) 8%, var(--surface)); }
+.guard.g-continue, .guard.g-break { border-color: color-mix(in oklab, var(--c-loop) 34%, var(--line)); }
+.guard.g-continue .gc, .guard.g-break .gc { background: color-mix(in oklab, var(--c-loop) 8%, var(--surface)); }
+
+/* ---------- if / else as two columns -------------------------------------- */
+.if { margin: 12px 10px 12px 0; min-width: 0; }
+.if.split { border: 1px solid color-mix(in oklab, var(--c-if) 34%, var(--line)); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+.if-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 14px 8px 10px; background: linear-gradient(90deg, color-mix(in oklab, var(--c-if) 15%, var(--surface)), color-mix(in oklab, var(--c-if) 4%, var(--surface))); border-bottom: 1px solid color-mix(in oklab, var(--c-if) 22%, var(--line)); }
+.if-h .tc { margin-left: auto; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--col, 60ch)), 1fr)); gap: 1px; background: var(--line); }
+.col { --cc: var(--c-yes); background: var(--surface); min-width: 0; display: flex; flex-direction: column; }
+.col.no { --cc: var(--c-no); }
+.col-h { display: flex; align-items: center; gap: 7px; padding: 5px 12px; background: color-mix(in oklab, var(--cc) 10%, var(--surface)); color: var(--cc); font: 800 10.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.col-h .i { width: 14px; height: 14px; padding: 2px; border-radius: 99px; background: var(--cc); color: var(--surface); stroke-width: 3.2; box-sizing: content-box; }
+.col-h span { margin-left: 2px; color: var(--ink-3); font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; }
+.col-h .tc { margin-left: auto; }
+.col-b { flex: 1; padding: 6px 0 8px 6px; min-width: 0; }
+.col.leaves .col-h { box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--cc) 30%, transparent); }
+
+/* ---------- decision ladder (if / elif / else, match) --------------------- */
+.ladder { display: grid; gap: 1px; background: var(--line); border: 1px solid color-mix(in oklab, var(--c-if) 30%, var(--line)); border-radius: var(--r-lg); overflow: hidden; }
+.b-match .ladder { border-color: color-mix(in oklab, var(--c-match) 30%, var(--line)); margin: 8px 8px 6px 0; }
+.rung { --rc: var(--c-if); display: flex; flex-wrap: wrap; background: var(--surface); min-width: 0; }
+.rung > .when { flex: 1 1 var(--when-w, 30ch); }
+.rung > .then { flex: 4 1 var(--then-w, 46ch); }
+.rung .when { display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start; gap: 6px 10px; padding: 9px 12px; background: color-mix(in oklab, var(--rc) 8%, var(--surface)); min-width: 0; }
+.b-match .rung { --rc: var(--c-match); }
+.rung.else { --rc: var(--c-else); }
+.rung .when .tc { margin-left: 0; flex-basis: 100%; }
+.rung .then { padding: 6px 0 8px 6px; min-width: 0; }
+.rung.leaves .when { box-shadow: inset 3px 0 0 color-mix(in oklab, var(--rc) 55%, transparent); }
+.ladder.stackme .when, .ladder.stackme .then { flex-basis: 100%; }
+
+/* ---------- stacked branches (long bodies) -------------------------------- */
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.arm { --ac: var(--c-if); border: 1px solid color-mix(in oklab, var(--ac) 30%, var(--line)); border-left: 4px solid var(--ac); border-radius: var(--r-md); background: color-mix(in oklab, var(--ac) 2.4%, var(--surface)); min-width: 0; }
+.arm.no { --ac: var(--c-else); }
+.arm > .bh { padding: 6px 12px 6px 8px; cursor: pointer; background: color-mix(in oklab, var(--ac) 8%, var(--surface)); border-radius: 0 var(--r-md) 0 0; }
+.arm:not([open]) > .bh { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.arm[open] > .bh { border-bottom: 1px solid color-mix(in oklab, var(--ac) 16%, var(--line)); }
+.arm > .bh:hover { background: color-mix(in oklab, var(--ac) 13%, var(--surface)); }
+.arm > .bh .chv { width: 14px; height: 14px; color: var(--ac); opacity: .8; }
+.arm > .bb { padding: 6px 0 8px 10px; min-width: 0; }
+
+/* ---------- try / except -------------------------------------------------- */
+.try { margin: 14px 10px 14px 0; border: 1px solid color-mix(in oklab, var(--c-try) 30%, var(--line)); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; min-width: 0; }
+.try-h { display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 10px; background: linear-gradient(90deg, color-mix(in oklab, var(--c-try) 14%, var(--surface)), color-mix(in oklab, var(--c-try) 3%, var(--surface))); border-bottom: 1px solid color-mix(in oklab, var(--c-try) 20%, var(--line)); }
+.lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--col, 60ch)), 1fr)); gap: 1px; background: var(--line); }
+.lane { background: var(--surface); min-width: 0; }
+.lane-h { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font: 800 10.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.lane-h .i { width: 14px; height: 14px; }
+.lane-h span { margin-left: 2px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-3); font-size: 12px; }
+.lane.ok .lane-h { color: var(--c-yes); background: color-mix(in oklab, var(--c-yes) 9%, var(--surface)); }
+.lane.err .lane-h { color: var(--c-except); background: color-mix(in oklab, var(--c-except) 9%, var(--surface)); }
+.lane-h .tc { margin-left: auto; }
+.lane-b { padding: 4px 0 8px 6px; min-width: 0; }
+.handler { --hc: var(--c-except); margin: 6px 8px 6px 0; border: 1px solid color-mix(in oklab, var(--hc) 28%, var(--line)); border-left: 4px solid var(--hc); border-radius: var(--r-md); background: color-mix(in oklab, var(--hc) 3%, var(--surface)); min-width: 0; }
+.handler.ok { --hc: var(--c-try); } .handler.okelse { --hc: var(--c-yes); } .handler.fin { --hc: var(--c-finally); }
+.handler > .bh { padding: 6px 12px 6px 10px; background: color-mix(in oklab, var(--hc) 8%, var(--surface)); border-radius: 0 var(--r-md) 0 0; border-bottom: 1px solid color-mix(in oklab, var(--hc) 16%, var(--line)); }
+.handler > .bb { padding: 4px 0 8px 6px; min-width: 0; }
+.try > .handler { margin: 8px 10px 8px 8px; }
+.try.lanes-mode > .handler { margin-top: 10px; }
+
+/* ---------- folded runs (imports, class attributes) ----------------------- */
+.fold { margin: 8px 10px 8px 0; border: 1px dashed var(--line-2); border-radius: var(--r-md); background: color-mix(in oklab, var(--surface-2) 70%, transparent); }
+.mod-flow > .fold { margin: 14px 0; }
+.fold > summary { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; color: var(--ink-3); font: 700 11.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; }
+.fold > summary .i { width: 14px; height: 14px; transition: transform .18s; }
+.fold:not([open]) > summary .i { transform: rotate(-90deg); }
+.fold > summary em { margin-left: auto; font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; }
+.fold[open] > summary { border-bottom: 1px dashed var(--line-2); }
+.fold > .run { padding: 6px 0; }
+.fold:hover > summary { color: var(--ink); }
+
+/* ---------- variable hover highlight (CSS Custom Highlight API) ----------- */
+::highlight(pb-var) { background-color: rgb(91 91 240 / 0.26); color: inherit; }
+html.is-dark ::highlight(pb-var) { background-color: rgb(139 140 255 / 0.36); }
+::highlight(pb-find) { background-color: rgb(255 200 0 / 0.45); }
+
+@media (max-width: 720px) {
+  .flow { --gw: 44px; }
+  .g { padding: 0 4px; }
+  .ln { flex-wrap: wrap; }
+  .ln > .c, .run .hc > .c { flex: 1 1 0; min-width: 0; }
+  .tc { flex-basis: 100%; margin-left: 0; padding-left: var(--gw); }
+}
+
+/* ---------- indexing guide: NumPy / PyTorch subscripts ---------------------- */
+/* Inline: every comma separated term of x[:, n:, ...] is underlined by kind (no padding, so the
+   layout maths of columns never changes). Below the statement: one cell per axis, same order. */
+.ax, .ix-c { --ixc: var(--ink-3); }
+.ik-slice { --ixc: var(--c-try); }
+.ik-rest { --ixc: var(--c-loop); }
+.ik-new { --ixc: var(--c-yes); }
+.ik-pick { --ixc: var(--c-if); }
+.ik-mask, .ik-take { --ixc: var(--c-match); }
+.ik-others { --ixc: var(--ink-4); }
+
+.ax {
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--ixc) 12%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--ixc) 65%, transparent);
+  transition: background-color .12s;
+}
+.ax.ix-on { background: color-mix(in oklab, var(--ixc) 36%, transparent); }
+
+.ix { display: flex; flex-direction: column; gap: 5px; margin: 1px 10px 6px var(--gw); padding: 5px 0 3px; user-select: none; font: 12px/1.35 var(--font-ui); }
+.ix-r { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
+.ix-h { display: inline-flex; align-items: center; gap: 6px; padding-right: 4px; color: var(--ink-3); font: 700 10px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; }
+.ix-h .i { width: 14px; height: 14px; color: var(--accent); }
+.ix-h code { padding: 1px 6px; border-radius: 6px; background: var(--surface-3); color: var(--ink-2); font: 600 11.5px var(--font-mono); letter-spacing: 0; text-transform: none; }
+.ix-c {
+  display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 3px 10px 4px 9px; border-radius: 9px;
+  background: color-mix(in oklab, var(--ixc) 7%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--ixc) 26%, var(--line)); border-left: 3px solid var(--ixc);
+  transition: box-shadow .12s, background-color .12s;
+}
+.ix-k { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ix-c small { flex: none; font: 700 9.5px/1.2 var(--font-ui); letter-spacing: .07em; text-transform: uppercase; color: color-mix(in oklab, var(--ixc) 80%, var(--ink)); }
+.ix-c .ix-t { min-width: 0; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font: 600 12.5px/1.3 var(--font-mono); }
+.ix-m { color: var(--ink-2); font: 12px/1.35 var(--font-ui); }
+.ix-m code { padding: 0 4px; border-radius: 4px; background: color-mix(in oklab, var(--ixc) 12%, transparent); font: 11.5px var(--font-mono); }
+.ix-c.ix-on { background: color-mix(in oklab, var(--ixc) 15%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in oklab, var(--ixc) 34%, transparent); }
+.ix-c.ik-others { border-style: dashed; border-left-style: solid; background: transparent; opacity: .72; }
+.ix-more { padding-left: 2px; color: var(--ink-3); font: italic 11.5px var(--font-ui); }
+.no-index .ix { display: none; }
+.no-index .ax { background: none; box-shadow: none; }
+@media (max-width: 720px) {
+  .ix { margin-left: 8px; }
+  .ix-c .ix-t { max-width: 26ch; }
+}
+
+/* ---------- statically inferred neural-network schemas ------------------- */
+.nn-schema {
+  --nn: #0d9488;
+  padding: 16px 18px 13px;
+  border: 1px solid color-mix(in oklab, var(--nn) 24%, var(--line));
+  border-radius: var(--r-lg);
+  background: linear-gradient(135deg, color-mix(in oklab, var(--nn) 5%, var(--surface)), var(--surface) 72%);
+  box-shadow: var(--shadow-s);
+}
+.nn-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.nn-head .sh { flex: 1; margin: 0; color: var(--ink-2); }
+.nn-head .sh .i { color: var(--nn); }
+.nn-detect, .nn-count { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px; font: 700 10px/1.6 var(--font-ui); white-space: nowrap; }
+.nn-detect { color: var(--nn); background: color-mix(in oklab, var(--nn) 11%, transparent); }
+.nn-detect .i { width: 12px; height: 12px; }
+.nn-count { color: var(--ink-3); background: var(--surface-3); font-weight: 600; }
+.nn-intro, .nn-foot { margin: 6px 0 12px; color: var(--ink-3); font: 12px/1.5 var(--font-ui); }
+.nn-intro code, .nn-foot code { padding: 1px 4px; border-radius: 4px; background: var(--surface-3); font: 11px var(--font-mono); color: var(--ink-2); }
+.nn-flow { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.nn-input, .nn-output { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 10px; border: 1px dashed color-mix(in oklab, var(--nn) 36%, var(--line)); border-radius: 10px; background: color-mix(in oklab, var(--nn) 4%, var(--surface)); }
+.nn-input-label, .nn-output b { color: var(--nn); font: 800 9px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.nn-input > b { color: var(--ink); font: 700 12px var(--font-mono); }
+.nn-input code, .nn-output code { margin-left: auto; color: var(--ink-2); font: 600 11px var(--font-mono); overflow-wrap: anywhere; }
+.nn-stage { display: grid; grid-template-columns: minmax(100px, .7fr) minmax(230px, 1.5fr); align-items: stretch; gap: 8px; min-width: 0; }
+.nn-from { display: flex; flex-wrap: wrap; align-content: center; align-items: center; gap: 3px 6px; min-width: 0; padding: 6px 10px; border-radius: 9px; background: var(--surface-2); color: var(--ink-3); font: 10px var(--font-ui); }
+.nn-from > span { flex-basis: 100%; color: var(--ink-4); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.nn-from code { color: var(--ink-2); font: 600 10.5px var(--font-mono); overflow-wrap: anywhere; }
+.nn-join { color: var(--c-if); font-weight: 900; }
+.nn-arrow { display: inline-flex; align-items: center; color: var(--nn); }
+.nn-arrow .i { width: 15px; height: 15px; }
+.nn-node { display: grid; grid-template-columns: minmax(75px, .8fr) minmax(70px, .7fr) minmax(80px, 1fr) minmax(180px, 1.6fr); align-items: center; gap: 4px 10px; min-width: 0; padding: 8px 11px; border: 1px solid color-mix(in oklab, var(--nn) 24%, var(--line)); border-left: 3px solid var(--nn); border-radius: 10px; background: var(--surface); }
+.nn-node-top { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+.nn-node-top b { color: var(--ink); font: 700 11px var(--font-mono); overflow-wrap: anywhere; }
+.nn-line { color: var(--ink-4); font: 9px var(--font-mono); text-decoration: none; }
+.nn-line:hover { color: var(--accent); text-decoration: underline; }
+.nn-node > strong { color: var(--nn); font: 800 10px var(--font-ui); letter-spacing: .03em; }
+.nn-params { color: var(--ink-3); font: 10px/1.4 var(--font-mono); overflow-wrap: anywhere; }
+.nn-shapes { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 3px 5px; min-width: 0; color: var(--ink-3); font: 10px/1.4 var(--font-mono); }
+.nn-shapes > span, .nn-shapes > b { overflow-wrap: anywhere; }
+.nn-shapes > b { color: var(--ink-2); }
+.nn-shapes .i { width: 12px; height: 12px; color: var(--nn); }
+.nn-merge .nn-node { --nn: var(--c-if); }
+.nn-notes { margin: 8px 0 0; padding: 0 0 0 19px; color: var(--ink-2); font: 11px/1.55 var(--font-ui); }
+.nn-foot { margin: 8px 0 0; font-size: 10.5px; }
+@media (max-width: 720px) {
+  .nn-schema { padding: 12px; }
+  .nn-stage { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .nn-from { flex-direction: row; align-content: center; padding: 4px 8px; }
+  .nn-from > span { flex-basis: auto; }
+  .nn-from .nn-arrow { margin-left: auto; transform: rotate(90deg); }
+  .nn-node { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .nn-shapes { grid-column: 1 / -1; justify-content: flex-start; }
+  .nn-input code, .nn-output code { margin-left: 0; }
+}
+
+@media (prefers-color-scheme: dark) {
+html[data-theme="auto"] {
+  color-scheme: dark;
+  --bg: #0c0e1d;
+  --surface: #14172e;
+  --surface-2: #181c38;
+  --surface-3: #1e2344;
+  --code-bg: #10132a;
+  --hover: rgb(139 140 255 / 0.09);
+  --line: #242a50;
+  --line-2: #323a6a;
+  --ink: #e8eaff;
+  --ink-2: #b6bbe0;
+  --ink-3: #8b92c2;
+  --ink-4: #5d6493;
+  --accent: #8b8cff;
+  --accent-2: #b48bff;
+  --accent-3: #ff7ac0;
+  --c-if: #f5b53d;
+  --c-yes: #3dd598;
+  --c-no: #ff6b81;
+  --c-loop: #a98bff;
+  --c-try: #4cb8ff;
+  --c-except: #ff8a4c;
+  --c-finally: #94a3bd;
+  --c-with: #2dd4bf;
+  --c-match: #e879f9;
+  --c-ret: #34d399;
+  --c-raise: #ff6b6b;
+  --c-else: #94a0bd;
+  --c-main: #8b8cff;
+  --c-case: #e879f9;
+  --g-A: #34d399;
+  --g-B: #a3d94a;
+  --g-C: #fbbf24;
+  --g-D: #fb923c;
+  --g-E: #ff6b81;
+  --g-F: #e879f9;
+  --k-cls: #8b8cff;
+  --k-fn: #62a8ff;
+  --k-m: #38d0e8;
+  --k-p: #34d8c4;
+  --tk-k: #c39bff;
+  --tk-kc: #ff7aa8;
+  --tk-b: #4fd6ee;
+  --tk-ex: #ff9d5c;
+  --tk-fd: #7cb7ff;
+  --tk-cd: #ffc170;
+  --tk-fc: #86b6ff;
+  --tk-cn: #ffa06b;
+  --tk-cs: #f5cd6b;
+  --tk-sl: #e59bff;
+  --tk-dn: #8189b8;
+  --tk-kw: #ffb870;
+  --tk-ty: #5fd8e8;
+  --tk-at: #b4baea;
+  --tk-s: #7fe3a0;
+  --tk-sf: #ffa36b;
+  --tk-es: #ffc46b;
+  --tk-n: #ffa36b;
+  --tk-o: #8f97c8;
+  --tk-cm: #7a82b4;
+  --shadow-s: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-m: 0 14px 34px -14px rgb(0 0 0 / 0.65), 0 2px 8px rgb(0 0 0 / 0.3);
+  --glow: 0 0 0 3px rgb(139 140 255 / 0.3);
+}
+}
+
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" class="sprite" aria-hidden="true" width="0" height="0" style="position:absolute"><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol><symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol><symbol id="i-branch" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol><symbol id="i-diamond" viewBox="0 0 24 24"><path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/></symbol><symbol id="i-loop" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol><symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2-10 5 10 5 10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol><symbol id="i-network" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="15" y="3" width="6" height="6" rx="1.5"/><rect x="9" y="15" width="6" height="6" rx="1.5"/><path d="M9 6h6M6 9v3l5 3M18 9v3l-5 3"/></symbol><symbol id="i-return" viewBox="0 0 24 24"><path d="M9 10 4 15l5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol><symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></symbol><symbol id="i-skip" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z"/><path d="m15 9-6 6M9 9l6 6"/></symbol><symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol><symbol id="i-comment" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol><symbol id="i-package" viewBox="0 0 24 24"><path d="m16.5 9.4-9-5.2"/><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></symbol><symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol><symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol><symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><path d="M7 7h.01"/></symbol><symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol><symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol><symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9z"/></symbol><symbol id="i-map" viewBox="0 0 24 24"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z"/><path d="M8 2v16M16 6v16"/></symbol><symbol id="i-infinity" viewBox="0 0 24 24"><path d="M18.2 8c5.1 0 5.1 8 0 8-5.1 0-7.1-8-12.7-8-4.6 0-4.6 8 0 8 5.6 0 7.6-8 12.7-8z"/></symbol><symbol id="i-brackets" viewBox="0 0 24 24"><path d="M8 3H5v18h3M16 3h3v18h-3M12 9v.01M12 15v.01"/></symbol><symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></symbol><symbol id="i-collapse" viewBox="0 0 24 24"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/></symbol><symbol id="i-at" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol><symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 3h6l-1 7 3 3v2H7v-2l3-3z"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol><symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol><symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol><symbol id="i-git-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol><symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol><symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></symbol><symbol id="i-rotate" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="i-circle-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol><symbol id="i-function" viewBox="0 0 24 24"><path d="M9 17c0 2-1 3-3 3M9 17V8a4 4 0 0 1 4-4h2M5 12h8"/></symbol><symbol id="i-braces" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></symbol><symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol><symbol id="i-columns" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/></symbol></svg>
+<div class="app">
+<aside class="side" id="side"><div class="side-in"><a class="brand" href="#top"><span class="logo"><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg></span><span class="bt"><b>vision_model.py</b><small>beautified &middot; 8 definitions</small></span></a><label class="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Jump to…  ( / )" autocomplete="off" spellcheck="false"></label><nav class="outline" aria-label="Outline"><a class="ol-top" href="#top"><svg class="i" aria-hidden="true"><use href="#i-map"/></svg><span>Overview</span></a><a class="ol-top" href="#source"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg><span>Source walkthrough</span></a><div class="ol-h">Classes<small>3</small></div><ul><li class="ol-class has-kids" data-name="torchmodel"><button class="ol-t" type="button" aria-label="Toggle"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button><a href="#d-TorchModel" data-target="d-TorchModel"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg><span>TorchModel</span><i class="dot g-A"></i></a><ul class="ol-sub"><li class="ol-method" data-name="torchmodel.__init__"><span class="ol-t ph"></span><a href="#d-TorchModel.__init__" data-target="d-TorchModel.__init__"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg><span>__init__</span><i class="dot g-A"></i></a></li></ul></li><li class="ol-class has-kids" data-name="tinyvisionnet"><button class="ol-t" type="button" aria-label="Toggle"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button><a href="#d-TinyVisionNet" data-target="d-TinyVisionNet"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg><span>TinyVisionNet</span><i class="dot g-A"></i></a><ul class="ol-sub"><li class="ol-method" data-name="tinyvisionnet.__init__"><span class="ol-t ph"></span><a href="#d-TinyVisionNet.__init__" data-target="d-TinyVisionNet.__init__"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg><span>__init__</span><i class="dot g-A"></i></a></li><li class="ol-method" data-name="tinyvisionnet.forward"><span class="ol-t ph"></span><a href="#d-TinyVisionNet.forward" data-target="d-TinyVisionNet.forward"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg><span>forward</span><i class="dot g-A"></i></a></li></ul></li><li class="ol-class has-kids" data-name="lookslikeatorchmodel"><button class="ol-t" type="button" aria-label="Toggle"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button><a href="#d-LooksLikeATorchModel" data-target="d-LooksLikeATorchModel"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg><span>LooksLikeATorchModel</span><i class="dot g-A"></i></a><ul class="ol-sub"><li class="ol-method" data-name="lookslikeatorchmodel.__init__"><span class="ol-t ph"></span><a href="#d-LooksLikeATorchModel.__init__" data-target="d-LooksLikeATorchModel.__init__"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg><span>__init__</span><i class="dot g-A"></i></a></li><li class="ol-method" data-name="lookslikeatorchmodel.forward"><span class="ol-t ph"></span><a href="#d-LooksLikeATorchModel.forward" data-target="d-LooksLikeATorchModel.forward"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg><span>forward</span><i class="dot g-A"></i></a></li></ul></li></ul><div class="ol-empty" hidden>No matches</div></nav></div></aside>
+<main class="main" id="main">
+<div class="topbar"><button class="btn icon-btn" id="menu" type="button" aria-label="Menu"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button><div class="sp"></div><button class="btn" id="b-expand" type="button" title="Expand every card"><svg class="i" aria-hidden="true"><use href="#i-expand"/></svg><span>Expand all</span></button><button class="btn" id="b-collapse" type="button" title="Collapse every card"><svg class="i" aria-hidden="true"><use href="#i-collapse"/></svg><span>Collapse all</span></button><button class="btn" id="b-lines" type="button" aria-pressed="true" title="Toggle line numbers"><svg class="i" aria-hidden="true"><use href="#i-hash"/></svg><span>Lines</span></button><button class="btn" id="b-comments" type="button" aria-pressed="true" title="Show or hide comments"><svg class="i" aria-hidden="true"><use href="#i-comment"/></svg><span>Comments</span></button><button class="btn icon-btn" id="b-theme" type="button" aria-label="Toggle theme" title="Light / dark"><svg class="i t-sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="i t-moon" aria-hidden="true"><use href="#i-moon"/></svg></button><button class="btn icon-btn" id="b-print" type="button" aria-label="Print" title="Print"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></button></div>
+<header class="hero" id="top"><div class="hero-bg" aria-hidden="true"></div><div class="hero-in"><div class="hero-text"><div class="eyebrow"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg><span>examples/</span></div><h1 class="title"><span class="stem">vision_model</span><span class="suffix">.py</span></h1><p class="lead">A small image classifier that demonstrates the static model-schema view.</p><div class="hero-chips"></div></div><div class="hero-art"><svg class="minimap" viewBox="0 0 186 118" aria-hidden="true"><rect class="mm-docs" x="0.0" y="0.0" width="54.0" height="3.2" rx="1.4"/><rect class="mm-docs" x="0.0" y="9.8" width="54.0" height="3.2" rx="1.4"/><rect class="mm-docs" x="0.0" y="14.7" width="54.0" height="3.2" rx="1.4"/><rect class="mm-docs" x="0.0" y="19.6" width="21.1" height="3.2" rx="1.4"/><rect class="mm-docs" x="0.0" y="24.5" width="2.5" height="3.2" rx="1.4"/><rect class="mm-code" x="0.0" y="29.4" width="10.1" height="3.2" rx="1.4"/><rect class="mm-code" x="0.0" y="34.3" width="16.9" height="3.2" rx="1.4"/><rect class="mm-def" x="0.0" y="49.0" width="23.6" height="3.2" rx="1.4"/><rect class="mm-docs" x="3.4" y="53.9" width="50.6" height="3.2" rx="1.4"/><rect class="mm-def" x="3.4" y="63.7" width="16.0" height="3.2" rx="1.4"/><rect class="mm-code" x="6.8" y="68.6" width="15.2" height="3.2" rx="1.4"/><rect class="mm-def" x="0.0" y="83.3" width="27.0" height="3.2" rx="1.4"/><rect class="mm-docs" x="3.4" y="88.2" width="50.6" height="3.2" rx="1.4"/><rect class="mm-docs" x="3.4" y="98.0" width="4.2" height="3.2" rx="1.4"/><rect class="mm-docs" x="6.8" y="102.9" width="43.0" height="3.2" rx="1.4"/><rect class="mm-docs" x="3.4" y="107.8" width="2.5" height="3.2" rx="1.4"/><rect class="mm-def" x="69.4" y="0.0" width="32.1" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="4.9" width="15.2" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="9.8" width="25.3" height="3.2" rx="1.4"/><rect class="mm-code" x="76.1" y="14.7" width="36.3" height="3.2" rx="1.4"/><rect class="mm-code" x="76.1" y="19.6" width="16.0" height="3.2" rx="1.4"/><rect class="mm-code" x="76.1" y="24.5" width="8.4" height="3.2" rx="1.4"/><rect class="mm-code" x="76.1" y="29.4" width="13.5" height="3.2" rx="1.4"/><rect class="mm-code" x="76.1" y="34.3" width="37.1" height="3.2" rx="1.4"/><rect class="mm-code" x="76.1" y="39.2" width="8.4" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="44.1" width="2.5" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="49.0" width="47.2" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="53.9" width="39.7" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="58.8" width="33.8" height="3.2" rx="1.4"/><rect class="mm-def" x="69.4" y="68.6" width="43.0" height="3.2" rx="1.4"/><rect class="mm-docs" x="72.8" y="73.5" width="47.2" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="78.4" width="19.4" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="83.3" width="19.4" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="88.2" width="16.9" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="93.1" width="27.8" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="98.0" width="30.4" height="3.2" rx="1.4"/><rect class="mm-code" x="72.8" y="102.9" width="27.8" height="3.2" rx="1.4"/><rect class="mm-def" x="132.0" y="0.0" width="22.8" height="3.2" rx="1.4"/><rect class="mm-docs" x="135.4" y="4.9" width="50.6" height="3.2" rx="1.4"/><rect class="mm-def" x="135.4" y="14.7" width="16.0" height="3.2" rx="1.4"/><rect class="mm-code" x="138.8" y="19.6" width="27.8" height="3.2" rx="1.4"/><rect class="mm-code" x="138.8" y="24.5" width="20.2" height="3.2" rx="1.4"/><rect class="mm-def" x="135.4" y="34.3" width="17.7" height="3.2" rx="1.4"/><rect class="mm-code" x="138.8" y="39.2" width="35.4" height="3.2" rx="1.4"/></svg><small>the file, line by line</small></div></div><div class="hero-foot"><div class="tiles"><div class="tile "><span class="ti"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><b>57</b><small>lines</small></div><div class="tile "><span class="ti"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg></span><b>3</b><small>classes</small></div><div class="tile "><span class="ti"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg></span><b>0</b><small>functions</small></div><div class="tile "><span class="ti"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg></span><b>5</b><small>methods</small></div><div class="tile "><span class="ti"><svg class="i" aria-hidden="true"><use href="#i-cpu"/></svg></span><b>1.0</b><small>complexity</small></div><div class="tile good"><span class="ti"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span><b>80%</b><small>documented</small></div><div class="tile good"><span class="ti"><svg class="i" aria-hidden="true"><use href="#i-braces"/></svg></span><b>120%</b><small>type hints</small></div></div><div class="linebar"><div class="lb-bar"><span class="lb lb-code" style="flex:32" title="32 code lines (56%)"></span><span class="lb lb-docs" style="flex:14" title="14 docs lines (25%)"></span><span class="lb lb-blank" style="flex:11" title="11 blank lines (19%)"></span></div><div class="lb-legend"><span class="lk"><i class="lb-code"></i>code <b>32</b></span><span class="lk"><i class="lb-docs"></i>docs <b>14</b></span><span class="lk"><i class="lb-comment"></i>comment <b>0</b></span><span class="lk"><i class="lb-blank"></i>blank <b>11</b></span></div></div></div></header>
+<section class="overview"><div class="grid"><section class="panel p-doc wide"><h2 class="ph"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg><span>About this module</span></h2><div class="pb"><div class="prose"><p>Input size is stated in the <code class="ic">forward</code> docstring so the diagram can carry exact sizes through Conv2d, pooling, flatten and Linear. The file is a documentation fixture: torch is never imported or run by the beautifier.</p></div></div></section><section class="panel p-map wide"><h2 class="ph"><svg class="i" aria-hidden="true"><use href="#i-map"/></svg><span>Code map</span><small>every box is a definition</small></h2><div class="pb"><div class="treemap"><svg viewBox="0 0 1000 360" role="img" aria-label="Code map"><g class="tm-class"><a href="#d-TinyVisionNet"><title>TinyVisionNet &middot; class &middot; 26 lines</title><rect class="tm-cbg" x="1.5" y="1.5" width="699.7" height="357.0" rx="9"/><text class="tm-ct" x="10.5" y="15.0">TinyVisionNet</text></a><a href="#d-TinyVisionNet.__init__" class="tm-leaf  g-A"><title>TinyVisionNet.__init__ &middot; method &middot; 13 lines &middot; complexity 1 (A)</title><rect x="6.5" y="23.5" width="426.2" height="330.0" rx="6"/><text x="12.5" y="37.5">__init__</text><text class="tm-sub" x="12.5" y="51.5">13 lines &middot; A1</text></a><a href="#d-TinyVisionNet.forward" class="tm-leaf  g-A"><title>TinyVisionNet.forward &middot; method &middot; 8 lines &middot; complexity 1 (A)</title><rect x="434.7" y="23.5" width="261.5" height="330.0" rx="6"/><text x="440.7" y="37.5">forward</text><text class="tm-sub" x="440.7" y="51.5">8 lines &middot; A1</text></a></g><g class="tm-class"><a href="#d-LooksLikeATorchModel"><title>LooksLikeATorchModel &middot; class &middot; 7 lines</title><rect class="tm-cbg" x="704.2" y="1.5" width="294.3" height="226.1" rx="9"/><text class="tm-ct" x="713.2" y="15.0">LooksLikeATorchModel</text></a><a href="#d-LooksLikeATorchModel.__init__" class="tm-leaf  g-A"><title>LooksLikeATorchModel.__init__ &middot; method &middot; 3 lines &middot; complexity 1 (A)</title><rect x="709.2" y="23.5" width="169.8" height="199.1" rx="6"/><text x="715.2" y="37.5">__init__</text><text class="tm-sub" x="715.2" y="51.5">3 lines &middot; A1</text></a><a href="#d-LooksLikeATorchModel.forward" class="tm-leaf  g-A"><title>LooksLikeATorchModel.forward &middot; method &middot; 2 lines &middot; complexity 1 (A)</title><rect x="881.0" y="23.5" width="112.5" height="199.1" rx="6"/><text x="887.0" y="37.5">forward</text><text class="tm-sub" x="887.0" y="51.5">2 lines &middot; A1</text></a></g><g class="tm-class"><a href="#d-TorchModel"><title>TorchModel &middot; class &middot; 4 lines</title><rect class="tm-cbg" x="704.2" y="230.6" width="294.3" height="127.9" rx="9"/><text class="tm-ct" x="713.2" y="244.1">TorchModel</text></a><a href="#d-TorchModel.__init__" class="tm-leaf  g-A"><title>TorchModel.__init__ &middot; method &middot; 2 lines &middot; complexity 1 (A)</title><rect x="709.2" y="252.6" width="284.3" height="100.9" rx="6"/><text x="715.2" y="266.6">__init__</text><text class="tm-sub" x="715.2" y="280.6">2 lines &middot; A1</text></a></g></svg><div class="cm-legend"><span>area = lines of code</span><span class="sp"></span>complexity <span class="cm-k g-A"><i></i>A</span><span class="cm-k g-B"><i></i>B</span><span class="cm-k g-C"><i></i>C</span><span class="cm-k g-D"><i></i>D</span><span class="cm-k g-E"><i></i>E</span><span class="cm-k g-F"><i></i>F</span></div></div></div></section><section class="panel p-health"><h2 class="ph"><svg class="i" aria-hidden="true"><use href="#i-cpu"/></svg><span>Health</span></h2><div class="pb"><div class="rings"><div class="rg"><span class="ring r-good" title="Docstring coverage: 80%"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="80.0 100" transform="rotate(-90 18 18)"/></svg><b>80<i>%</i></b></span><span>docstrings</span></div><div class="rg"><span class="ring r-good" title="Type hint coverage: 100%"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="100.0 100" transform="rotate(-90 18 18)"/></svg><b>100<i>%</i></b></span><span>type hints</span></div></div><div class="gbar" role="img" aria-label="complexity grades"><span class="gb-s g-A" style="flex:5" title="5 functions with grade A (simple)"><b>A</b><i>5</i></span></div><ul class=facts><li><svg class="i" aria-hidden="true"><use href="#i-file"/></svg>longest function: <a href="#d-TinyVisionNet.__init__"><code>__init__</code></a> <b>13</b> lines</li></ul></div></section><section class="panel p-api wide"><h2 class="ph"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span>API at a glance</span></h2><div class="pb"><div class="tbl"><table class="ptable mtable"><thead><tr><th>Definition</th><th>Summary</th><th>CC</th><th>Lines</th></tr></thead><tbody><tr><td class="ai-n"><a href="#d-TorchModel"><span class="kind k-cls sm"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg></span><b>TorchModel</b></a><span class="ai-x">1 method</span></td><td class="pc" data-label="Summary">An intermediate base class, so descendants are detected transitively.</td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">4</td></tr><tr><td class="ai-n"><a href="#d-TinyVisionNet"><span class="kind k-cls sm"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg></span><b>TinyVisionNet</b></a><span class="ai-x">2 methods</span></td><td class="pc" data-label="Summary">A compact CNN; the schema expands the Sequential block and follows the residual join.</td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">26</td></tr><tr><td class="ai-n"><a href="#d-LooksLikeATorchModel"><span class="kind k-cls sm"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg></span><b>LooksLikeATorchModel</b></a><span class="ai-x">2 methods</span></td><td class="pc" data-label="Summary">Detected structurally: a forward method calls named layer-like attributes.</td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">7</td></tr></tbody></table></div></div></section><section class="panel p-imports"><h2 class="ph"><svg class="i" aria-hidden="true"><use href="#i-package"/></svg><span>Imports</span></h2><div class="pb"><div class="imp-g"><h3>Third party<small>2</small></h3><div class="imp-c"><span class="imp imp-third" title="import torch"><b>torch</b></span><span class="imp imp-third" title="from torch import nn"><b>torch</b><i>nn</i></span></div></div></div></section></div></section>
+<section class="source" id="source"><h2 class="sec-title"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg><span>Source walkthrough</span><small>top to bottom, structured by control flow</small></h2><div class="legend"><span class="legend-l">How to read</span><span class="lg lg-if"><svg class="i" aria-hidden="true"><use href="#i-diamond"/></svg>decision</span><span class="lg lg-yes"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>yes</span><span class="lg lg-no"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg>no</span><span class="lg lg-loop"><svg class="i" aria-hidden="true"><use href="#i-loop"/></svg>loop</span><span class="lg lg-try"><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>try</span><span class="lg lg-except"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>except</span><span class="lg lg-with"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg>with</span><span class="lg lg-match"><svg class="i" aria-hidden="true"><use href="#i-shuffle"/></svg>match</span><span class="lg lg-ret"><svg class="i" aria-hidden="true"><use href="#i-return"/></svg>return</span><span class="lg lg-raise"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>raise</span></div><div class="flow mod-flow"><div class="run"><div class="ln st st-imp" id="L7"><i class="g" data-n="7"><svg class="i" aria-hidden="true"><use href="#i-package"/></svg></i><code class="c"><i class=k>import</i> torch</code></div><div class="ln st st-imp" id="L8"><i class="g" data-n="8"><svg class="i" aria-hidden="true"><use href="#i-package"/></svg></i><code class="c"><i class=k>from</i> torch <i class=k>import</i> nn</code></div></div><article class="card def cls g-A" id="d-TorchModel" data-name="TorchModel" data-l1="11" data-l2="15"><header class="dh"><div class="dh-top"><span class="kind k-cls" title="class"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg></span><div class="dh-title"><h3 class="dname"><b class="nm">TorchModel</b></h3><div class="badges"></div></div><div class="dstats"><span class="stat" title="methods"><b>1</b><small>methods</small></span><span class="stat" title="attributes"><b>0</b><small>attrs</small></span><span class="stat" title="lines of code"><b>4</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><div class="rel"><span class="rel-l"><svg class="i" aria-hidden="true"><use href="#i-up-right"/></svg>extends</span><span class="base"><code>nn.Module</code></span><span class="rel-l"><svg class="i" aria-hidden="true"><use href="#i-git-merge"/></svg>subclasses</span><a class="base local" href="#d-TinyVisionNet"><code>TinyVisionNet</code></a></div><pre class="sig"><code><i class=k>class</i> <i class=cd>TorchModel</i>(nn.<i class=at>Module</i>)</code></pre><p class="sum">An intermediate base class, so descendants are detected transitively.</p></header><div class="cb"><section class="sec nn-schema" aria-label="Static neural network schema for TorchModel"><div class="nn-head"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-network"/></svg>Model schema</h4><span class="nn-detect" title="inherits a PyTorch/Keras module base"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg><b>PyTorch module</b></span><span class="nn-count">no traced layer calls</span></div><p class="nn-intro">Inferred statically from <code>__init__</code> and <code>forward()</code>; no model code is run. Shapes are symbolic where dimensions are unknown.</p><div class="nn-flow" role="img" aria-label="Input flows through 0 statically inferred layer steps"><div class="nn-input"><span class="nn-input-label">INPUT</span><b>input</b><code>[…, ?]</code></div></div><ul class="nn-notes"><li>No forward() method is defined in this class.</li></ul><p class="nn-foot">Best-effort schema; dynamic control flow, data-dependent shapes and custom modules may not be fully expanded.</p></section><section class="sec sec-methods"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg>Methods<small>1</small></h4><div class="tbl"><table class="ptable mtable"><thead><tr><th>Method</th><th>Summary</th><th>CC</th><th>Lines</th></tr></thead><tbody><tr><td class="mn"><a href="#d-TorchModel.__init__"><code>__init__</code><span class="ms">()</span></a><span class="bd bd-muted">dunder</span></td><td class="pc" data-label="Summary"><span class="none">—</span></td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">2</td></tr></tbody></table></div></section><details class="impl" open><summary class="ih"><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg><b>Class body</b><small>4 lines</small></summary><div class="flow cls-flow"><article class="card def fn g-A nested n1" id="d-TorchModel.__init__" data-name="TorchModel.__init__" data-l1="14" data-l2="15"><header class="dh"><div class="dh-top"><span class="kind k-m" title="method"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg></span><div class="dh-title"><h3 class="dname"><span class="qp">TorchModel.</span><b class="nm">__init__</b></h3><div class="badges"><span class="bd bd-muted">dunder</span></div></div><div class="dstats"><span class="stat" title="parameters"><b>0</b><small>params</small></span><span class="stat" title="lines of code"><b>2</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><pre class="sig"><code><i class=k>def</i> <i class=fd>__init__</i>(<i class=sl>self</i>)</code></pre></header><div class="cb"><details class="insights"><summary><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg><b>Insights</b><small>1 caller · 2 other calls</small></summary><div class="ins-body"><div class="ins-col"><h5><svg class="i" aria-hidden="true"><use href="#i-git-merge"/></svg>Connections</h5><svg class="conn" viewBox="0 0 509 42" style="max-width:509px" role="img" aria-label="Calls into and out of __init__"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 9 5 1 9z" class="arrow"/></marker></defs><path class="edge e-in" d="M173 21.0 C202.7 21.0 197.3 21.0 227 21.0" marker-end="url(#ar)"/><a href="#d-TinyVisionNet.__init__" class="node n-in g-A"><title>TinyVisionNet.__init__ &middot; complexity 1</title><rect x="0.0" y="8.0" width="173" height="26" rx="8"/><text x="86.5" y="25.0" text-anchor="middle">TinyVisionNet.__init__</text></a><g class="node n-this g-A"><rect x="227" y="5.0" width="100" height="32" rx="10"/><text x="277.0" y="25.5" text-anchor="middle">__init__</text></g><g class="node n-none"><rect x="381" y="25.0" width="128" height="26" rx="8"/><text x="445.0" y="42.0" text-anchor="middle">calls nothing local</text></g></svg><div class="ext-row"><svg class="i" aria-hidden="true"><use href="#i-up-right"/></svg><span class="tc-l">also calls</span><code class="ext">super</code><code class="ext">super().__init__</code></div></div></div></details><div class="impl tiny"><div class="flow"><div class="run"><div class="ln" id="L15"><i class="g" data-n="15"></i><code class="c"><i class=b>super</i>().<i class=mc>__init__</i>()</code></div></div></div></div></div></article></div></details></div></article><article class="card def cls g-A" id="d-TinyVisionNet" data-name="TinyVisionNet" data-l1="18" data-l2="46"><header class="dh"><div class="dh-top"><span class="kind k-cls" title="class"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg></span><div class="dh-title"><h3 class="dname"><b class="nm">TinyVisionNet</b></h3><div class="badges"><span class="bd bd-accent"><svg class="i" aria-hidden="true"><use href="#i-braces"/></svg>model</span></div></div><div class="dstats"><span class="stat" title="methods"><b>2</b><small>methods</small></span><span class="stat" title="attributes"><b>4</b><small>attrs</small></span><span class="stat" title="lines of code"><b>26</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><div class="rel"><span class="rel-l"><svg class="i" aria-hidden="true"><use href="#i-up-right"/></svg>extends</span><a class="base local" href="#d-TorchModel"><code>TorchModel</code></a></div><pre class="sig"><code><i class=k>class</i> <i class=cd>TinyVisionNet</i>(<i class=cn>TorchModel</i>)</code></pre><p class="sum">A compact CNN; the schema expands the Sequential block and follows the residual join.</p></header><div class="cb"><section class="sec nn-schema" aria-label="Static neural network schema for TinyVisionNet"><div class="nn-head"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-network"/></svg>Model schema</h4><span class="nn-detect" title="inherits a locally declared module base"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg><b>inherits local module</b></span><span class="nn-count">11 traced steps</span></div><p class="nn-intro">Inferred statically from <code>__init__</code> and <code>forward()</code>; no model code is run. Shapes are symbolic where dimensions are unknown.</p><div class="nn-flow" role="img" aria-label="Input flows through 11 statically inferred layer steps"><div class="nn-input"><span class="nn-input-label">INPUT</span><b>x</b><code>[B, 3, 32, 32]</code></div><div class="nn-stage" title="Conv2d"><div class="nn-from"><span>from</span><code>input</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>features.0</b><a class="nn-line" href="#L41" title="Jump to source line 41">L41</a></div><strong>Conv2d</strong><small class="nn-params">in_channels=3, out_channels=16, kernel_size=3, padding=1</small><div class="nn-shapes"><span>[B, 3, 32, 32]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 16, 32, 32]</b></div></div></div><div class="nn-stage" title="BatchNorm2d"><div class="nn-from"><span>from</span><code>features.0</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>features.1</b><a class="nn-line" href="#L41" title="Jump to source line 41">L41</a></div><strong>BatchNorm2d</strong><small class="nn-params">num_features=16</small><div class="nn-shapes"><span>[B, 16, 32, 32]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 16, 32, 32]</b></div></div></div><div class="nn-stage" title="ReLU"><div class="nn-from"><span>from</span><code>features.1</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>features.2</b><a class="nn-line" href="#L41" title="Jump to source line 41">L41</a></div><strong>ReLU</strong><div class="nn-shapes"><span>[B, 16, 32, 32]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 16, 32, 32]</b></div></div></div><div class="nn-stage" title="MaxPool2d"><div class="nn-from"><span>from</span><code>features.2</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>features.3</b><a class="nn-line" href="#L41" title="Jump to source line 41">L41</a></div><strong>MaxPool2d</strong><small class="nn-params">kernel_size=2</small><div class="nn-shapes"><span>[B, 16, 32, 32]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 16, 16, 16]</b></div></div></div><div class="nn-stage" title="Conv2d"><div class="nn-from"><span>from</span><code>features.3</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>features.4</b><a class="nn-line" href="#L41" title="Jump to source line 41">L41</a></div><strong>Conv2d</strong><small class="nn-params">in_channels=16, out_channels=32, kernel_size=3, padding=1</small><div class="nn-shapes"><span>[B, 16, 16, 16]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 32, 16, 16]</b></div></div></div><div class="nn-stage" title="ReLU"><div class="nn-from"><span>from</span><code>features.4</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>features.5</b><a class="nn-line" href="#L41" title="Jump to source line 41">L41</a></div><strong>ReLU</strong><div class="nn-shapes"><span>[B, 32, 16, 16]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 32, 16, 16]</b></div></div></div><div class="nn-stage" title="Conv2d"><div class="nn-from"><span>from</span><code>input</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>shortcut</b><a class="nn-line" href="#L42" title="Jump to source line 42">L42</a></div><strong>Conv2d</strong><small class="nn-params">in_channels=3, out_channels=32, kernel_size=1, stride=2</small><div class="nn-shapes"><span>[B, 3, 32, 32]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 32, 16, 16]</b></div></div></div><div class="nn-stage nn-merge" title="Elementwise merge"><div class="nn-from"><span>from</span><code>features.5</code> <span class="nn-join">+</span> <code>shortcut</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>+</b><a class="nn-line" href="#L43" title="Jump to source line 43">L43</a></div><strong>Add</strong><small class="nn-params">elementwise merge</small><div class="nn-shapes"><span>[B, 32, 16, 16]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 32, 16, 16]</b></div></div></div><div class="nn-stage" title="AdaptiveAvgPool2d"><div class="nn-from"><span>from</span><code>+</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>global_pool</b><a class="nn-line" href="#L44" title="Jump to source line 44">L44</a></div><strong>AdaptiveAvgPool2d</strong><small class="nn-params">output_size=(1, 1)</small><div class="nn-shapes"><span>[B, 32, 16, 16]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 32, 1, 1]</b></div></div></div><div class="nn-stage" title="Flatten"><div class="nn-from"><span>from</span><code>global_pool</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>Flatten</b><a class="nn-line" href="#L45" title="Jump to source line 45">L45</a></div><strong>Flatten</strong><small class="nn-params">1</small><div class="nn-shapes"><span>[B, 32, 1, 1]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, 32]</b></div></div></div><div class="nn-stage" title="Linear"><div class="nn-from"><span>from</span><code>Flatten</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>classifier</b><a class="nn-line" href="#L46" title="Jump to source line 46">L46</a></div><strong>Linear</strong><small class="nn-params">in_features=32, out_features=classes</small><div class="nn-shapes"><span>[B, 32]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[B, classes]</b></div></div></div><span class="nn-output"><b>output</b><code>[B, classes]</code></span></div><p class="nn-foot">Best-effort schema; dynamic control flow, data-dependent shapes and custom modules may not be fully expanded.</p></section><section class="sec sec-attrs"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-braces"/></svg>Attributes<small>4</small></h4><div class="tbl"><table class="ptable"><thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Comments</th></tr></thead><tbody><tr><td class="pn"><code>features</code><span class="pk sc-instance">instance</span> <span class="pk" title="assigned in __init__()">in __init__</span></td><td class="pt" data-label="Type"><code class="ty inferred" title="inferred from the assigned value">Sequential<sup>inferred</sup></code></td><td class="pd" data-label="Default"><span class="none">—</span></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr><tr><td class="pn"><code>shortcut</code><span class="pk sc-instance">instance</span> <span class="pk" title="assigned in __init__()">in __init__</span></td><td class="pt" data-label="Type"><code class="ty inferred" title="inferred from the assigned value">Conv2d<sup>inferred</sup></code></td><td class="pd" data-label="Default"><code class="dv">nn.<i class=cn>Conv2d</i>(<i class=n>3</i>, <i class=n>32</i>, <i class=kw>kernel_size</i><i class=o>=</i><i class=n>1</i>, <i class=kw>stride</i><i class=o>=</i><i class=n>2</i>)</code></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr><tr><td class="pn"><code>global_pool</code><span class="pk sc-instance">instance</span> <span class="pk" title="assigned in __init__()">in __init__</span></td><td class="pt" data-label="Type"><code class="ty inferred" title="inferred from the assigned value">AdaptiveAvgPool2d<sup>inferred</sup></code></td><td class="pd" data-label="Default"><code class="dv">nn.<i class=cn>AdaptiveAvgPool2d</i>((<i class=n>1</i>, <i class=n>1</i>))</code></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr><tr><td class="pn"><code>classifier</code><span class="pk sc-instance">instance</span> <span class="pk" title="assigned in __init__()">in __init__</span></td><td class="pt" data-label="Type"><code class="ty inferred" title="inferred from the assigned value">Linear<sup>inferred</sup></code></td><td class="pd" data-label="Default"><code class="dv">nn.<i class=cn>Linear</i>(<i class=n>32</i>, classes)</code></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr></tbody></table></div></section><section class="sec sec-methods"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg>Methods<small>2</small></h4><div class="tbl"><table class="ptable mtable"><thead><tr><th>Method</th><th>Summary</th><th>CC</th><th>Lines</th></tr></thead><tbody><tr><td class="mn"><a href="#d-TinyVisionNet.__init__"><code>__init__</code><span class="ms">(classes)</span></a><span class="bd bd-muted">dunder</span></td><td class="pc" data-label="Summary"><span class="none">—</span></td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">13</td></tr><tr><td class="mn"><a href="#d-TinyVisionNet.forward"><code>forward</code><span class="ms">(x)</span></a></td><td class="pc" data-label="Summary">Process an image batch.</td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">8</td></tr></tbody></table></div></section><details class="impl" open><summary class="ih"><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg><b>Class body</b><small>26 lines</small></summary><div class="flow cls-flow"><article class="card def fn g-A nested n1" id="d-TinyVisionNet.__init__" data-name="TinyVisionNet.__init__" data-l1="25" data-l2="37"><header class="dh"><div class="dh-top"><span class="kind k-m" title="method"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg></span><div class="dh-title"><h3 class="dname"><span class="qp">TinyVisionNet.</span><b class="nm">__init__</b></h3><div class="badges"><span class="bd bd-muted">dunder</span></div></div><div class="dstats"><span class="stat" title="parameters"><b>1</b><small>params</small></span><span class="stat" title="lines of code"><b>13</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><pre class="sig"><code><i class=k>def</i> <i class=fd>__init__</i>(<i class=sl>self</i>, classes: <i class=b>int</i> <i class=o>=</i> <i class=n>10</i>)</code></pre></header><div class="cb"><section class="sec sec-params"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-columns"/></svg>Parameters<small>1</small></h4><div class="tbl"><table class="ptable"><thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Comments</th></tr></thead><tbody><tr class=""><td class="pn"><code>classes</code></td><td class="pt" data-label="Type"><code class="ty"><i class=ty>int</i></code></td><td class="pd" data-label="Default"><code class="dv"><i class=n>10</i></code></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr></tbody></table></div></section><div class="touches"><div class="tc-h">self.</div><div class="tc-row"><svg class="i" aria-hidden="true"><use href="#i-edit"/></svg><span class="tc-l">writes</span><code class="tch w">features</code><code class="tch w">shortcut</code><code class="tch w">global_pool</code><code class="tch w">classifier</code></div></div><details class="insights"><summary><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg><b>Insights</b><span class="fp-mini" aria-hidden="true"><i class="fp-s fp-call" style="flex:1.00"></i><i class="fp-s fp-assign" style="flex:3.32"></i></span><small>1 local call · 8 other calls</small></summary><div class="ins-body"><div class="ins-col"><h5><svg class="i" aria-hidden="true"><use href="#i-git-merge"/></svg>Connections</h5><svg class="conn" viewBox="0 0 489 42" style="max-width:489px" role="img" aria-label="Calls into and out of __init__"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 9 5 1 9z" class="arrow"/></marker></defs><path class="edge e-out" d="M282 21.0 C311.7 21.0 306.3 21.0 336 21.0" marker-end="url(#ar)"/><g class="node n-none"><rect x="0" y="25.0" width="128" height="26" rx="8"/><text x="64.0" y="42.0" text-anchor="middle">no callers here</text></g><g class="node n-this g-A"><rect x="182" y="5.0" width="100" height="32" rx="10"/><text x="232.0" y="25.5" text-anchor="middle">__init__</text></g><a href="#d-TorchModel.__init__" class="node n-out g-A"><title>TorchModel.__init__ &middot; complexity 1</title><rect x="336.0" y="8.0" width="153" height="26" rx="8"/><text x="412.5" y="25.0" text-anchor="middle">TorchModel.__init__</text></a></svg><div class="ext-row"><svg class="i" aria-hidden="true"><use href="#i-up-right"/></svg><span class="tc-l">also calls</span><code class="ext">nn.Conv2d<i>×3</i></code><code class="ext">nn.ReLU<i>×2</i></code><code class="ext">nn.AdaptiveAvgPool2d</code><code class="ext">nn.BatchNorm2d</code><code class="ext">nn.Linear</code><code class="ext">nn.MaxPool2d</code><code class="ext">nn.Sequential</code><code class="ext">super</code></div></div><div class="ins-col"><h5><svg class="i" aria-hidden="true"><use href="#i-hash"/></svg>Shape<small>top-level statements</small></h5><div class="fp"><div class="fp-bar"><a class="fp-s fp-call" href="#L26" style="flex:2.20" title="calls &middot; line 26"></a><a class="fp-s fp-assign" href="#L27" style="flex:7.30" title="assignments &middot; lines 27–37"></a></div><div class="fp-legend"><span class="fp-k"><i class="fp-call"></i>calls</span><span class="fp-k"><i class="fp-assign"></i>assignments</span></div></div></div></div></details><details class="impl" open><summary class="ih"><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg><b>Implementation</b><small>13 lines</small></summary><div class="flow"><div class="run"><div class="ln" id="L26"><i class="g" data-n="26"></i><code class="c"><i class=b>super</i>().<i class=mc>__init__</i>()</code></div><div class="ln" id="L27"><i class="g" data-n="27"></i><code class="c"><i class=sl>self</i>.<i class=at>features</i> <i class=o>=</i> nn.<i class=cn>Sequential</i>(
+    nn.<i class=cn>Conv2d</i>(<i class=n>3</i>, <i class=n>16</i>, <i class=kw>kernel_size</i><i class=o>=</i><i class=n>3</i>, <i class=kw>padding</i><i class=o>=</i><i class=n>1</i>),
+    nn.<i class=cn>BatchNorm2d</i>(<i class=n>16</i>),
+    nn.<i class=cn>ReLU</i>(),
+    nn.<i class=cn>MaxPool2d</i>(<i class=n>2</i>),
+    nn.<i class=cn>Conv2d</i>(<i class=n>16</i>, <i class=n>32</i>, <i class=kw>kernel_size</i><i class=o>=</i><i class=n>3</i>, <i class=kw>padding</i><i class=o>=</i><i class=n>1</i>),
+    nn.<i class=cn>ReLU</i>(),
+)</code></div><div class="ln" id="L35"><i class="g" data-n="35"></i><code class="c"><i class=sl>self</i>.<i class=at>shortcut</i> <i class=o>=</i> nn.<i class=cn>Conv2d</i>(<i class=n>3</i>, <i class=n>32</i>, <i class=kw>kernel_size</i><i class=o>=</i><i class=n>1</i>, <i class=kw>stride</i><i class=o>=</i><i class=n>2</i>)</code></div><div class="ln" id="L36"><i class="g" data-n="36"></i><code class="c"><i class=sl>self</i>.<i class=at>global_pool</i> <i class=o>=</i> nn.<i class=cn>AdaptiveAvgPool2d</i>((<i class=n>1</i>, <i class=n>1</i>))</code></div><div class="ln" id="L37"><i class="g" data-n="37"></i><code class="c"><i class=sl>self</i>.<i class=at>classifier</i> <i class=o>=</i> nn.<i class=cn>Linear</i>(<i class=n>32</i>, classes)</code></div></div></div></details></div></article><article class="card def fn g-A nested n1" id="d-TinyVisionNet.forward" data-name="TinyVisionNet.forward" data-l1="39" data-l2="46"><header class="dh"><div class="dh-top"><span class="kind k-m" title="method"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg></span><div class="dh-title"><h3 class="dname"><span class="qp">TinyVisionNet.</span><b class="nm">forward</b></h3><div class="badges"></div></div><div class="dstats"><span class="stat" title="parameters"><b>1</b><small>params</small></span><span class="stat" title="lines of code"><b>8</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><pre class="sig"><code><i class=k>def</i> <i class=fd>forward</i>(<i class=sl>self</i>, x: torch.<i class=at>Tensor</i>) <i class=o>-&gt;</i> torch.<i class=at>Tensor</i></code></pre><p class="sum">Process an image batch.</p></header><div class="cb"><section class="sec sec-params"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-columns"/></svg>Parameters<small>1</small></h4><div class="tbl"><table class="ptable"><thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Comments</th></tr></thead><tbody><tr class="req-row"><td class="pn"><code>x</code></td><td class="pt" data-label="Type"><code class="ty"><i class=ty>torch</i>.<i class=ty>Tensor</i></code></td><td class="pd" data-label="Default"><span class="req">required</span></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr></tbody></table></div></section><div class="io-inline"><svg class="i" aria-hidden="true"><use href="#i-return"/></svg><b>Returns</b><code class="ty"><i class=ty>torch</i>.<i class=ty>Tensor</i></code></div><details class="insights"><summary><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg><b>Insights</b><span class="fp-mini" aria-hidden="true"><i class="fp-s fp-assign" style="flex:2.24"></i><i class="fp-s fp-ret" style="flex:1.00"></i></span><small>5 other calls</small></summary><div class="ins-body"><div class="ins-col"><h5><svg class="i" aria-hidden="true"><use href="#i-git-merge"/></svg>Connections</h5><div class="ext-row"><svg class="i" aria-hidden="true"><use href="#i-up-right"/></svg><span class="tc-l">also calls</span><code class="ext">self.classifier</code><code class="ext">self.features</code><code class="ext">self.global_pool</code><code class="ext">self.shortcut</code><code class="ext">torch.flatten</code></div></div><div class="ins-col"><h5><svg class="i" aria-hidden="true"><use href="#i-hash"/></svg>Shape<small>top-level statements</small></h5><div class="fp"><div class="fp-bar"><a class="fp-s fp-assign" href="#L41" style="flex:4.92" title="assignments &middot; lines 41–45"></a><a class="fp-s fp-ret" href="#L46" style="flex:2.20" title="return &middot; line 46"></a></div><div class="fp-legend"><span class="fp-k"><i class="fp-assign"></i>assignments</span><span class="fp-k"><i class="fp-ret"></i>return</span></div></div></div></div></details><details class="impl" open><summary class="ih"><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg><b>Implementation</b><small>8 lines</small></summary><div class="flow"><div class="run"><div class="ln" id="L41"><i class="g" data-n="41"></i><code class="c">main <i class=o>=</i> <i class=sl>self</i>.<i class=mc>features</i>(x)</code></div><div class="ln" id="L42"><i class="g" data-n="42"></i><code class="c">skip <i class=o>=</i> <i class=sl>self</i>.<i class=mc>shortcut</i>(x)</code></div><div class="ln" id="L43"><i class="g" data-n="43"></i><code class="c">merged <i class=o>=</i> main <i class=o>+</i> skip</code></div><div class="ln" id="L44"><i class="g" data-n="44"></i><code class="c">pooled <i class=o>=</i> <i class=sl>self</i>.<i class=mc>global_pool</i>(merged)</code></div><div class="ln" id="L45"><i class="g" data-n="45"></i><code class="c">flattened <i class=o>=</i> torch.<i class=mc>flatten</i>(pooled, <i class=n>1</i>)</code></div><div class="ln x x-ret" id="L46"><i class="g" data-n="46"><svg class="i" aria-hidden="true"><use href="#i-return"/></svg></i><code class="c"><i class=k>return</i> <i class=sl>self</i>.<i class=mc>classifier</i>(flattened)</code></div></div></div></details></div></article></div></details></div></article><article class="card def cls g-A" id="d-LooksLikeATorchModel" data-name="LooksLikeATorchModel" data-l1="49" data-l2="57"><header class="dh"><div class="dh-top"><span class="kind k-cls" title="class"><svg class="i" aria-hidden="true"><use href="#i-box"/></svg></span><div class="dh-title"><h3 class="dname"><b class="nm">LooksLikeATorchModel</b></h3><div class="badges"></div></div><div class="dstats"><span class="stat" title="methods"><b>2</b><small>methods</small></span><span class="stat" title="attributes"><b>2</b><small>attrs</small></span><span class="stat" title="lines of code"><b>7</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><pre class="sig"><code><i class=k>class</i> <i class=cd>LooksLikeATorchModel</i></code></pre><p class="sum">Detected structurally: a forward method calls named layer-like attributes.</p></header><div class="cb"><section class="sec nn-schema" aria-label="Static neural network schema for LooksLikeATorchModel"><div class="nn-head"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-network"/></svg>Model schema</h4><span class="nn-detect" title="has a forward() method and layer-like attributes"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg><b>module-like pattern</b></span><span class="nn-count">2 traced steps</span></div><p class="nn-intro">Inferred statically from <code>__init__</code> and <code>forward()</code>; no model code is run. Shapes are symbolic where dimensions are unknown.</p><div class="nn-flow" role="img" aria-label="Input flows through 2 statically inferred layer steps"><div class="nn-input"><span class="nn-input-label">INPUT</span><b>x</b><code>[…, 128]</code></div><div class="nn-stage" title="Linear"><div class="nn-from"><span>from</span><code>input</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>projection</b><a class="nn-line" href="#L57" title="Jump to source line 57">L57</a></div><strong>Linear</strong><small class="nn-params">in_features=128, out_features=32</small><div class="nn-shapes"><span>[…, 128]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[…, 32]</b></div></div></div><div class="nn-stage" title="ReLU"><div class="nn-from"><span>from</span><code>projection</code><i class="nn-arrow" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i></div><div class="nn-node"><div class="nn-node-top"><b>activation</b><a class="nn-line" href="#L57" title="Jump to source line 57">L57</a></div><strong>ReLU</strong><div class="nn-shapes"><span>[…, 32]</span><i aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-arrow-r"/></svg></i><b>[…, 32]</b></div></div></div><span class="nn-output"><b>output</b><code>[…, 32]</code></span></div><p class="nn-foot">Best-effort schema; dynamic control flow, data-dependent shapes and custom modules may not be fully expanded.</p></section><section class="sec sec-attrs"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-braces"/></svg>Attributes<small>2</small></h4><div class="tbl"><table class="ptable"><thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Comments</th></tr></thead><tbody><tr><td class="pn"><code>projection</code><span class="pk sc-instance">instance</span> <span class="pk" title="assigned in __init__()">in __init__</span></td><td class="pt" data-label="Type"><code class="ty inferred" title="inferred from the assigned value">Linear<sup>inferred</sup></code></td><td class="pd" data-label="Default"><code class="dv"><i class=cn>Linear</i>(<i class=n>128</i>, <i class=n>32</i>)</code></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr><tr><td class="pn"><code>activation</code><span class="pk sc-instance">instance</span> <span class="pk" title="assigned in __init__()">in __init__</span></td><td class="pt" data-label="Type"><code class="ty inferred" title="inferred from the assigned value">ReLU<sup>inferred</sup></code></td><td class="pd" data-label="Default"><code class="dv"><i class=cn>ReLU</i>()</code></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr></tbody></table></div></section><section class="sec sec-methods"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg>Methods<small>2</small></h4><div class="tbl"><table class="ptable mtable"><thead><tr><th>Method</th><th>Summary</th><th>CC</th><th>Lines</th></tr></thead><tbody><tr><td class="mn"><a href="#d-LooksLikeATorchModel.__init__"><code>__init__</code><span class="ms">()</span></a><span class="bd bd-muted">dunder</span></td><td class="pc" data-label="Summary"><span class="none">—</span></td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">3</td></tr><tr><td class="mn"><a href="#d-LooksLikeATorchModel.forward"><code>forward</code><span class="ms">(x)</span></a></td><td class="pc" data-label="Summary"><span class="none">—</span></td><td class="mc" data-label="Complexity"><span class="gauge g-A sm" title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></td><td class="ml" data-label="Lines">2</td></tr></tbody></table></div></section><details class="impl" open><summary class="ih"><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg><b>Class body</b><small>7 lines</small></summary><div class="flow cls-flow"><article class="card def fn g-A nested n1" id="d-LooksLikeATorchModel.__init__" data-name="LooksLikeATorchModel.__init__" data-l1="52" data-l2="54"><header class="dh"><div class="dh-top"><span class="kind k-m" title="method"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg></span><div class="dh-title"><h3 class="dname"><span class="qp">LooksLikeATorchModel.</span><b class="nm">__init__</b></h3><div class="badges"><span class="bd bd-muted">dunder</span></div></div><div class="dstats"><span class="stat" title="parameters"><b>0</b><small>params</small></span><span class="stat" title="lines of code"><b>3</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><pre class="sig"><code><i class=k>def</i> <i class=fd>__init__</i>(<i class=sl>self</i>)</code></pre></header><div class="cb"><div class="touches"><div class="tc-h">self.</div><div class="tc-row"><svg class="i" aria-hidden="true"><use href="#i-edit"/></svg><span class="tc-l">writes</span><code class="tch w">projection</code><code class="tch w">activation</code></div></div><details class="insights"><summary><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg><b>Insights</b><small>2 other calls</small></summary><div class="ins-body"><div class="ins-col"><h5><svg class="i" aria-hidden="true"><use href="#i-git-merge"/></svg>Connections</h5><div class="ext-row"><svg class="i" aria-hidden="true"><use href="#i-up-right"/></svg><span class="tc-l">also calls</span><code class="ext">Linear</code><code class="ext">ReLU</code></div></div></div></details><div class="impl tiny"><div class="flow"><div class="run"><div class="ln" id="L53"><i class="g" data-n="53"></i><code class="c"><i class=sl>self</i>.<i class=at>projection</i> <i class=o>=</i> <i class=cn>Linear</i>(<i class=n>128</i>, <i class=n>32</i>)</code></div><div class="ln" id="L54"><i class="g" data-n="54"></i><code class="c"><i class=sl>self</i>.<i class=at>activation</i> <i class=o>=</i> <i class=cn>ReLU</i>()</code></div></div></div></div></div></article><article class="card def fn g-A nested n1" id="d-LooksLikeATorchModel.forward" data-name="LooksLikeATorchModel.forward" data-l1="56" data-l2="57"><header class="dh"><div class="dh-top"><span class="kind k-m" title="method"><svg class="i" aria-hidden="true"><use href="#i-function"/></svg></span><div class="dh-title"><h3 class="dname"><span class="qp">LooksLikeATorchModel.</span><b class="nm">forward</b></h3><div class="badges"><span class="bd bd-ghost">undocumented</span></div></div><div class="dstats"><span class="stat" title="parameters"><b>1</b><small>params</small></span><span class="stat" title="lines of code"><b>2</b><small>lines</small></span><span class="gauge g-A " title="Cyclomatic complexity 1 &middot; grade A (simple)"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15" pathLength="100"/><circle class="val" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="10.0 100" transform="rotate(-90 18 18)"/></svg><b>1</b><small>A</small></span></div><button class="cpy" type="button" aria-label="Copy source" title="Copy source"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button><button class="tog" type="button" aria-label="Collapse or expand" title="Collapse / expand"><svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></button></div><pre class="sig"><code><i class=k>def</i> <i class=fd>forward</i>(<i class=sl>self</i>, x)</code></pre></header><div class="cb"><section class="sec sec-params"><h4 class="sh"><svg class="i" aria-hidden="true"><use href="#i-columns"/></svg>Parameters<small>1</small></h4><div class="tbl"><table class="ptable"><thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Comments</th></tr></thead><tbody><tr class="req-row"><td class="pn"><code>x</code></td><td class="pt" data-label="Type"><span class="none">untyped</span></td><td class="pd" data-label="Default"><span class="req">required</span></td><td class="pc" data-label="Comments"><span class="none">—</span></td></tr></tbody></table></div></section><details class="insights"><summary><svg class="i chv" aria-hidden="true"><use href="#i-chev"/></svg><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg><b>Insights</b><small>2 other calls</small></summary><div class="ins-body"><div class="ins-col"><h5><svg class="i" aria-hidden="true"><use href="#i-git-merge"/></svg>Connections</h5><div class="ext-row"><svg class="i" aria-hidden="true"><use href="#i-up-right"/></svg><span class="tc-l">also calls</span><code class="ext">self.activation</code><code class="ext">self.projection</code></div></div></div></details><div class="impl tiny"><div class="flow"><div class="run"><div class="ln x x-ret" id="L57"><i class="g" data-n="57"><svg class="i" aria-hidden="true"><use href="#i-return"/></svg></i><code class="c"><i class=k>return</i> <i class=sl>self</i>.<i class=mc>activation</i>(<i class=sl>self</i>.<i class=mc>projection</i>(x))</code></div></div></div></div></div></article></div></details></div></article></div></section>
+<footer class="foot"><span><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg>Generated by <b>python_beautifier</b> 0.1.0</span><span>vision_model.py &middot; 57 lines &middot; fully offline, no external resources</span></footer>
+</main>
+</div>
+<script type="text/plain" id="pb-source">"\"\"\"A small image classifier that demonstrates the static model-schema view.\n\nInput size is stated in the ``forward`` docstring so the diagram can carry exact sizes through\nConv2d, pooling, flatten and Linear. The file is a documentation fixture: torch is never imported\nor run by the beautifier.\n\"\"\"\nimport torch\nfrom torch import nn\n\n\nclass TorchModel(nn.Module):\n    \"\"\"An intermediate base class, so descendants are detected transitively.\"\"\"\n\n    def __init__(self):\n        super().__init__()\n\n\nclass TinyVisionNet(TorchModel):\n    \"\"\"A compact CNN; the schema expands the Sequential block and follows the residual join.\n\n    Args:\n        x: A batch of RGB images shaped ``(B, 3, 32, 32)``.\n    \"\"\"\n\n    def __init__(self, classes: int = 10):\n        super().__init__()\n        self.features = nn.Sequential(\n            nn.Conv2d(3, 16, kernel_size=3, padding=1),\n            nn.BatchNorm2d(16),\n            nn.ReLU(),\n            nn.MaxPool2d(2),\n            nn.Conv2d(16, 32, kernel_size=3, padding=1),\n            nn.ReLU(),\n        )\n        self.shortcut = nn.Conv2d(3, 32, kernel_size=1, stride=2)\n        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))\n        self.classifier = nn.Linear(32, classes)\n\n    def forward(self, x: torch.Tensor) -> torch.Tensor:\n        \"\"\"Process an image batch. ``x`` has shape ``(B, 3, 32, 32)``.\"\"\"\n        main = self.features(x)\n        skip = self.shortcut(x)\n        merged = main + skip\n        pooled = self.global_pool(merged)\n        flattened = torch.flatten(pooled, 1)\n        return self.classifier(flattened)\n\n\nclass LooksLikeATorchModel:\n    \"\"\"Detected structurally: a forward method calls named layer-like attributes.\"\"\"\n\n    def __init__(self):\n        self.projection = Linear(128, 32)\n        self.activation = ReLU()\n\n    def forward(self, x):\n        return self.activation(self.projection(x))\n"</script>
+<script>
+/* python_beautifier - tiny, dependency-free page behaviour.
+   Everything degrades gracefully: without JS the page is fully readable. */
+(function () {
+  "use strict";
+  var doc = document;
+  var root = doc.documentElement;
+  var $ = function (s, r) { return (r || doc).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); };
+  var store = {
+    get: function (k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* file:// may forbid storage */ } }
+  };
+
+  /* ---- theme ------------------------------------------------------------ */
+  var saved = store.get("pb-theme");
+  if (saved === "light" || saved === "dark") root.setAttribute("data-theme", saved);
+  function effectiveTheme() {
+    var t = root.getAttribute("data-theme");
+    if (t === "light" || t === "dark") return t;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function syncThemeButton() {
+    var dark = effectiveTheme() === "dark";
+    root.classList.toggle("is-dark", dark);
+  }
+  var themeBtn = $("#b-theme");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", function () {
+      var next = effectiveTheme() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      store.set("pb-theme", next);
+      syncThemeButton();
+    });
+  }
+  syncThemeButton();
+
+  /* ---- toolbar ---------------------------------------------------------- */
+  function setAll(collapsed) {
+    $$(".card").forEach(function (c) { c.classList.toggle("collapsed", collapsed); });
+    if (!collapsed) $$("details.box, details.arm, details.impl").forEach(function (d) { d.open = true; });
+  }
+  var b;
+  if ((b = $("#b-expand"))) b.addEventListener("click", function () { setAll(false); });
+  if ((b = $("#b-collapse"))) b.addEventListener("click", function () { setAll(true); });
+  function toggleClass(btn, cls, invert) {
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var pressed = btn.getAttribute("aria-pressed") !== "false";
+      pressed = !pressed;
+      btn.setAttribute("aria-pressed", String(pressed));
+      doc.body.classList.toggle(cls, invert ? !pressed : pressed);
+    });
+  }
+  toggleClass($("#b-lines"), "no-lines", true);
+  toggleClass($("#b-comments"), "no-comments", true);
+  toggleClass($("#b-index"), "no-index", true);
+  if ((b = $("#b-print"))) b.addEventListener("click", function () { setAll(false); window.print(); });
+  if ((b = $("#menu"))) b.addEventListener("click", function () { doc.body.classList.toggle("menu-open"); });
+  doc.addEventListener("click", function (e) {
+    if (doc.body.classList.contains("menu-open") && !e.target.closest(".side") && !e.target.closest("#menu")) {
+      doc.body.classList.remove("menu-open");
+    }
+    var a = e.target.closest && e.target.closest(".side a[href^='#']");
+    if (a) doc.body.classList.remove("menu-open");
+  });
+
+  /* ---- card collapse / copy -------------------------------------------- */
+  doc.addEventListener("click", function (e) {
+    var tog = e.target.closest && e.target.closest(".tog");
+    if (tog) {
+      var card = tog.closest(".card");
+      if (card) card.classList.toggle("collapsed");
+      return;
+    }
+    var cpy = e.target.closest && e.target.closest(".cpy");
+    if (cpy) {
+      var card2 = cpy.closest(".card");
+      var srcEl = $("#pb-source");
+      if (!card2 || !srcEl) return;
+      var lines;
+      try { lines = JSON.parse(srcEl.textContent).split("\n"); } catch (err) { return; }
+      var a = parseInt(card2.getAttribute("data-l1"), 10) - 1;
+      var z = parseInt(card2.getAttribute("data-l2"), 10);
+      var text = lines.slice(a, z).join("\n");
+      cpy.classList.add("done");
+      setTimeout(function () { cpy.classList.remove("done"); }, 1400);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
+        } else { fallbackCopy(text); }
+      } catch (err2) { fallbackCopy(text); }
+    }
+  });
+  function fallbackCopy(text) {
+    var ta = doc.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    doc.body.appendChild(ta); ta.select();
+    try { doc.execCommand("copy"); } catch (e) { /* ignore */ }
+    doc.body.removeChild(ta);
+  }
+
+  /* ---- jump to a card: expand it and flash it -------------------------- */
+  function reveal(id) {
+    var el = id && doc.getElementById(id);
+    if (!el) return;
+    var p = el;
+    while (p) {
+      if (p.classList && p.classList.contains("card")) p.classList.remove("collapsed");
+      if (p.tagName === "DETAILS") p.open = true;
+      p = p.parentElement;
+    }
+    var card = el.closest ? el.closest(".card") : null;
+    if (card && card === el) {
+      card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
+    }
+  }
+  window.addEventListener("hashchange", function () { reveal(decodeURIComponent(location.hash.slice(1))); });
+  if (location.hash) reveal(decodeURIComponent(location.hash.slice(1)));
+  doc.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href^='#']");
+    if (a && a.getAttribute("href").length > 1 && !a.closest(".side")) {
+      setTimeout(function () { reveal(decodeURIComponent(a.getAttribute("href").slice(1))); }, 0);
+    }
+  });
+
+  /* ---- sidebar: tree toggles, search, scrollspy ------------------------ */
+  $$(".ol-t").forEach(function (t) {
+    t.addEventListener("click", function () { t.parentElement.classList.toggle("collapsed"); });
+  });
+  var q = $("#q");
+  var items = $$(".outline li");
+  var empty = $(".ol-empty");
+  function filter() {
+    var term = (q.value || "").trim().toLowerCase();
+    var any = false;
+    items.forEach(function (li) { li.hidden = false; li.classList.remove("hit"); });
+    if (term) {
+      items.forEach(function (li) {
+        var name = li.getAttribute("data-name") || li.textContent.toLowerCase();
+        var own = name.indexOf(term) !== -1;
+        li.classList.toggle("hit", own);
+      });
+      items.forEach(function (li) {
+        var keep = li.classList.contains("hit") || li.querySelector(".hit");
+        li.hidden = !keep;
+        if (keep && li.querySelector(":scope > .ol-sub")) li.classList.remove("collapsed");
+        if (keep) any = true;
+      });
+    } else { any = true; }
+    $$(".ol-h").forEach(function (h) {
+      var ul = h.nextElementSibling;
+      h.hidden = !!term && ul && !ul.querySelector("li:not([hidden])");
+    });
+    if (empty) empty.hidden = any;
+  }
+  if (q) {
+    q.addEventListener("input", filter);
+    q.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        var first = $(".outline li:not([hidden]) > a[data-target]");
+        if (first) { location.hash = first.getAttribute("data-target"); q.blur(); }
+      } else if (e.key === "Escape") { q.value = ""; filter(); q.blur(); }
+    });
+    doc.addEventListener("keydown", function (e) {
+      if (e.key === "/" && !/^(INPUT|TEXTAREA)$/.test((doc.activeElement || {}).tagName || "")) {
+        e.preventDefault(); q.focus(); q.select();
+      }
+    });
+  }
+  var links = {};
+  $$(".outline a[data-target]").forEach(function (a) { links[a.getAttribute("data-target")] = a; });
+  var cards = $$(".card.def");
+  var current = null;
+  function setCurrent(id) {
+    if (id === current) return;
+    current = id;
+    $$(".outline a.on").forEach(function (a) { a.classList.remove("on"); });
+    var a = links[id];
+    if (a) {
+      a.classList.add("on");
+      var li = a.parentElement;
+      while (li && li.classList) {
+        if (li.tagName === "LI" && li.classList.contains("collapsed")) li.classList.remove("collapsed");
+        li = li.parentElement;
+      }
+      var nav = $(".outline");
+      if (nav) {
+        var r = a.getBoundingClientRect(), nr = nav.getBoundingClientRect();
+        if (r.top < nr.top + 40 || r.bottom > nr.bottom - 40) nav.scrollTop += r.top - nr.top - nr.height / 3;
+      }
+    }
+  }
+  if ("IntersectionObserver" in window && cards.length) {
+    var visible = new Map();
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) visible.set(en.target, en.boundingClientRect.top);
+        else visible.delete(en.target);
+      });
+      var best = null, bestTop = Infinity;
+      visible.forEach(function (_, el) {
+        var top = Math.abs(el.getBoundingClientRect().top - 90);
+        var depth = 0, p = el.parentElement;
+        while (p) { if (p.classList && p.classList.contains("card")) depth++; p = p.parentElement; }
+        var score = top - depth * 4;
+        if (score < bestTop) { bestTop = score; best = el; }
+      });
+      if (best) setCurrent(best.id);
+    }, { rootMargin: "-70px 0px -55% 0px", threshold: [0, 0.01] });
+    cards.forEach(function (c) { io.observe(c); });
+  }
+
+  /* ---- indexing guide: point at a term and its explanation lights up -- */
+  function ixLight(e, on) {
+    var t = e.target.closest && e.target.closest("[data-ix]");
+    if (!t || (e.relatedTarget && t.contains(e.relatedTarget))) return;
+    $$('[data-ix="' + t.getAttribute("data-ix") + '"]').forEach(function (el) { el.classList.toggle("ix-on", on); });
+  }
+  doc.addEventListener("mouseover", function (e) { ixLight(e, true); });
+  doc.addEventListener("mouseout", function (e) { ixLight(e, false); });
+
+  /* ---- hover a variable: highlight its uses inside the same card ------- */
+  var hasHL = typeof CSS !== "undefined" && CSS.highlights && typeof Highlight !== "undefined";
+  var lastWord = null;
+  function wordAt(x, y) {
+    var node, off;
+    if (doc.caretPositionFromPoint) {
+      var p = doc.caretPositionFromPoint(x, y);
+      if (!p) return null;
+      node = p.offsetNode; off = p.offset;
+    } else if (doc.caretRangeFromPoint) {
+      var r = doc.caretRangeFromPoint(x, y);
+      if (!r) return null;
+      node = r.startContainer; off = r.startOffset;
+    } else return null;
+    if (!node || node.nodeType !== 3) return null;
+    var t = node.data, s = off, e = off;
+    var isId = function (ch) { return /[A-Za-z0-9_]/.test(ch); };
+    while (s > 0 && isId(t[s - 1])) s--;
+    while (e < t.length && isId(t[e])) e++;
+    var w = t.slice(s, e);
+    if (!w || /^[0-9]/.test(w) || w.length < 2) return null;
+    return w;
+  }
+  function clearHL() { if (hasHL) CSS.highlights.delete("pb-var"); lastWord = null; }
+  if (hasHL) {
+    var timer = null;
+    doc.addEventListener("mousemove", function (ev) {
+      var t = ev.target;
+      if (!t.closest || !t.closest(".flow code.c, .sig, .gc code, .bh code")) { if (lastWord) clearHL(); return; }
+      if (t.closest(".tc, .note .nt, .s")) return;
+      clearTimeout(timer);
+      var x = ev.clientX, y = ev.clientY;
+      timer = setTimeout(function () {
+        var w = wordAt(x, y);
+        if (!w) { clearHL(); return; }
+        if (w === lastWord) return;
+        var scope = t.closest(".card") || doc.body;
+        var ranges = [];
+        var re = new RegExp("(^|[^A-Za-z0-9_])(" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")(?![A-Za-z0-9_])", "g");
+        var walker = doc.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+          acceptNode: function (n) {
+            var p = n.parentElement;
+            if (!p) return NodeFilter.FILTER_REJECT;
+            if (p.closest("code.c, .sig, .gc, .bh")) {
+              if (p.closest(".s, .cm, .tc, .es")) return NodeFilter.FILTER_REJECT;
+              return NodeFilter.FILTER_ACCEPT;
+            }
+            return NodeFilter.FILTER_REJECT;
+          }
+        });
+        var n;
+        while ((n = walker.nextNode())) {
+          var m;
+          re.lastIndex = 0;
+          while ((m = re.exec(n.data))) {
+            var start = m.index + m[1].length;
+            var rg = new Range();
+            rg.setStart(n, start); rg.setEnd(n, start + w.length);
+            ranges.push(rg);
+          }
+        }
+        if (ranges.length > 1) { CSS.highlights.set("pb-var", new Highlight(...ranges)); lastWord = w; }
+        else clearHL();
+      }, 60);
+    }, { passive: true });
+    doc.addEventListener("mouseleave", clearHL);
+  }
+
+  /* ---- chord diagram: hover a node to light up its calls --------------- */
+  $$(".chords").forEach(function (box) {
+    var chords = $$(".cd-chord", box);
+    $$(".cd-node a", box).forEach(function (a) {
+      var id = (a.getAttribute("href") || "").slice(1);
+      a.addEventListener("mouseenter", function () {
+        chords.forEach(function (c) {
+          var hit = c.getAttribute("data-a") === id || c.getAttribute("data-b") === id;
+          c.classList.toggle("hot", hit);
+          c.classList.toggle("dim", !hit);
+        });
+      });
+      a.addEventListener("mouseleave", function () {
+        chords.forEach(function (c) { c.classList.remove("hot", "dim"); });
+      });
+    });
+  });
+})();
+
+</script>
+</body>
+</html>

@@ -83,6 +83,7 @@ beautify_file("my_module.py", "out/my_module.html", theme="dark")        # write
 | runs of imports and of class attributes | folded away, one click to open |
 | nested functions and classes | their own nested cards |
 | NumPy / PyTorch / pandas subscripts such as `x[:, n:, ...]` | every term underlined by kind, and a strip that explains each axis ([below](#array-indexing-you-can-actually-read)) |
+| `torch.nn.Module` and module-like classes | a static layer graph with connections and tensor dimensions ([below](#a-static-schema-for-pytorch-models)) |
 
 ![try / except drawn as a happy-path lane and a failure lane](docs/lanes.png)
 
@@ -123,6 +124,32 @@ PyTorch, JAX, pandas, ...), because `handlers[None]` is just a dictionary lookup
 `expr[1, ...]` means "one or more". See
 [`examples/tensor_indexing.html`](examples/tensor_indexing.html), generated from
 [`examples/tensor_indexing.py`](examples/tensor_indexing.py), for 26 real-world subscripts.
+
+### A static schema for PyTorch models
+
+When a class inherits `torch.nn.Module` (including through a local base class), the card tries to
+trace the layers declared in `__init__` through `forward()`. It also recognizes a module-like
+pattern: a `forward()` method that calls layer attributes created in `__init__`. You do not need
+torch installed; the source is parsed, never imported or run.
+
+The diagram expands `nn.Sequential`, traces `ModuleList` loops once, connects each step to its
+input, marks elementwise residual merges, and annotates tensor shape before and after each layer.
+It understands common `Linear`, convolution, pooling, normalization, activation, flatten and shape
+operations. Input dimensions come from a shape in the `forward()` docstring or a tensor-shape
+type annotation when available; otherwise it starts with symbolic dimensions such as `[…, 3, H, W]`.
+Known `Conv2d`/pool formulas are propagated, and output feature dimensions come from the layer config.
+
+![Static schema: a convolutional model with two connected branches and tensor dimensions](docs/model-schema.png)
+
+This is best-effort static analysis. Unknown sizes stay symbolic; an imported custom block is shown
+as an opaque node rather than guessed. Both sides of a conditional are shown as alternatives, not
+as a guaranteed execution order. Arbitrary Python dispatch, dynamic layer construction and
+runtime-dependent shapes cannot always be recovered. PyTorch itself remains an optional dependency
+and the program is never executed.
+
+The [`vision_model.py`](examples/vision_model.py) fixture demonstrates direct and indirect module
+inheritance, a `Sequential` stack, a residual connection, exact spatial dimensions and a structural
+lookalike. Its generated page is [`vision_model.html`](examples/vision_model.html).
 
 ### The whole module at a glance
 
@@ -192,7 +219,9 @@ All thresholds are named constants at the top of
 
 - **Static analysis only.** Your code is parsed, never imported or run. The call graph covers
   calls between definitions *in the same file*; types are read from annotations and docstrings, or
-  inferred from default values (and labelled as inferred).
+  inferred from default values (and labelled as inferred). The neural schema is also static: it
+  follows common PyTorch layers and shape operations, but dynamic dispatch, arbitrary custom blocks
+  and runtime-dependent shapes may remain opaque or symbolic.
 - **Parsing uses the running interpreter's grammar**, so a file using newer syntax than your Python
   (for example `except*` before 3.11, or PEP 695 generics before 3.12) shows an error page.
   Files that do not parse, contain null bytes or nest code absurdly deep produce an explanatory
@@ -208,16 +237,17 @@ All thresholds are named constants at the top of
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e . pytest
-pytest                                                    # 330+ tests, a few seconds
+pytest                                                    # 370+ tests, a few seconds
 python -m python_beautifier examples/showcase.py -o examples/showcase.html   # refresh the examples
 python -m python_beautifier examples/tensor_indexing.py -o examples/tensor_indexing.html
+python -m python_beautifier examples/vision_model.py -o examples/vision_model.html
 ```
 
 The tests cover the docstring parser, the analysis, the structure of the output and the CLI. The
 central guarantee is tested too: **every character of the source appears in the page exactly once**
 (for the showcase, for 45 standard-library modules and for a set of awkward snippets), so the page
 can never silently drop or duplicate code. Pathological input is tested as well.
-The screenshots in `docs/` were captured from the two example pages with headless Chromium.
+The screenshots in `docs/` were captured from the example pages with headless Chromium.
 
 ```text
 python_beautifier/
@@ -226,10 +256,12 @@ python_beautifier/
   docstrings.py                       Google / NumPy / Sphinx / Epytext parser
   model.py analysis.py                definitions, parameters, complexity, types, call graph
   indexing.py                         decodes NumPy / PyTorch style subscripts, axis by axis
+  neural.py                           static layer graph and tensor-shape inference
   render/                             flow.py (bodies), cards.py (headers, tables),
-                                      widgets.py (charts), index.py (indexing strips),
+                                      widgets.py (charts), index.py / neural.py (diagrams),
                                       core.py (page), prose.py, icons.py
-  assets/                             base.css, cards.css, flow.css, app.js (inlined into the page)
-examples/                             showcase.py and tensor_indexing.py, with their generated pages
+  assets/                             base.css, cards.css, flow.css, neural.css, app.js
+                                      (all inlined into the page)
+examples/                             showcase, tensor_indexing and vision_model, with generated pages
 tests/
 ```
