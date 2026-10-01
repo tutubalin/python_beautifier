@@ -64,6 +64,10 @@ def _svg(route: Route, uid: str) -> str:
     height = output_y + 58
     cx = _NODE_X + _NODE_W / 2
     edge_bits: List[str] = []
+    skip_edge_count = 0
+    skip_color_count = 8
+    skip_colors: set[int] = set()
+    farthest_rail = 0
     for target_i, step in enumerate(steps):
         incoming = step.incoming or ("input",)
         for branch_i, producer in enumerate(incoming):
@@ -78,12 +82,20 @@ def _svg(route: Route, uid: str) -> str:
             if parent_i == target_i - 1 and len(incoming) == 1:
                 edge_bits.append(f'<path class="nn-edge" d="M {cx:g} {y[parent_i] + _NODE_H} V {y[target_i]}" marker-end="url(#{uid}-arrow)"/>')
             else:
-                rail = _NODE_X + _NODE_W + 18 + branch_i * 12
+                rail = _NODE_X + _NODE_W + 18 + skip_edge_count * 12
+                farthest_rail = max(farthest_rail, rail)
                 source_y = y[parent_i] + _NODE_H / 2
                 target_y = y[target_i] + _NODE_H / 2
+                color_index = skip_edge_count % skip_color_count
+                skip_edge_count += 1
+                skip_colors.add(color_index)
                 edge_bits.append(
-                    f'<path class="nn-edge nn-skip" d="M {_NODE_X + _NODE_W} {source_y} H {rail} V {target_y} H {_NODE_X + _NODE_W}" marker-end="url(#{uid}-arrow)"/>'
+                    f'<path class="nn-edge nn-skip nn-flow-{color_index}" d="M {_NODE_X + _NODE_W} {source_y} H {rail} V {target_y} H {_NODE_X + _NODE_W}" marker-end="url(#{uid}-arrow-skip-{color_index})"/>'
                 )
+    skip_markers = "".join(
+        f'<marker class="nn-arrowhead-{i}" id="{uid}-arrow-skip-{i}" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker>'
+        for i in sorted(skip_colors)
+    )
     nodes: List[str] = []
     for i, step in enumerate(steps):
         top = y[i]
@@ -107,11 +119,12 @@ def _svg(route: Route, uid: str) -> str:
     if not route.output_shapes:
         output_label = "OUTPUT · shape not statically determined"
     outs = f'<text class="nn-svg-output" x="{cx:g}" y="{output_y + 26}" text-anchor="middle">{esc(output_label)}</text>'
+    view_width = max(_SVG_W, farthest_rail + 20)
     return (
-        f'<div class="nn-svg-wrap"><svg class="nn-svg" viewBox="0 0 {_SVG_W} {height}" role="img" '
+        f'<div class="nn-svg-wrap"><svg class="nn-svg" viewBox="0 0 {view_width} {height}" role="img" '
         f'aria-label="{attr(f"{route.method_name} model path: {len(steps)} layers, input {format_shape(route.input_shape)}")}">'
         f'<title>{esc(route.method_name)} model path</title><desc>Layer graph. Each node shows input and output tensor dimensions; arrows show data flow.</desc>'
-        f'<defs><marker id="{uid}-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker></defs>'
+        f'<defs><marker id="{uid}-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker>{skip_markers}</defs>'
         f'<rect class="nn-svg-port" x="{cx - 260:g}" y="12" width="520" height="54" rx="13"/>'
         f'<text class="nn-svg-port-label" x="{cx:g}" y="33" text-anchor="middle">INPUT · {esc(route.input_name)}</text>'
         f'<text class="nn-svg-port-shape" x="{cx:g}" y="53" text-anchor="middle">{esc(format_shape(route.input_shape))}</text>'

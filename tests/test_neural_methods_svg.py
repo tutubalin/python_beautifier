@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+import re
 
 from python_beautifier import beautify
 from python_beautifier.neural import analyze
@@ -119,6 +120,33 @@ def test_schema_contains_one_inline_svg_per_execution_method_and_an_expandable_t
     assert 'class="nn-route-title"><code>forward_kv_cached()' in html
     assert "[…, 8]" in html and "[…, 4]" in html and "[…, 2]" in html
     assert "method contents" in html and "model code is never run" in html
+
+
+def test_crossing_skip_connections_use_distinct_colors_and_lanes():
+    code = '''
+from torch import nn
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.a = nn.Linear(8, 8)
+        self.b = nn.Linear(8, 8)
+        self.c = nn.Linear(8, 8)
+        self.d = nn.Linear(8, 8)
+    def forward(self, x):
+        a = self.a(x)
+        b = self.b(x)
+        a = self.c(a)
+        b = self.d(b)
+        return a + b
+'''
+    html = beautify(code)
+    paths = re.findall(r'<path class="nn-edge nn-skip nn-flow-\d+" d="([^"]+)"', html)
+    rails = [re.search(r"H (\d+) V", path).group(1) for path in paths]
+    assert len(paths) == len(set(rails)) == 4
+    for color in range(4):
+        assert f'class="nn-edge nn-skip nn-flow-{color}"' in html
+        assert f'id="nn-0-Net-arrow-skip-{color}"' in html
+        assert f".nn-edge.nn-skip.nn-flow-{color}" in html
 
 
 def test_merge_schema_svg_marks_a_skip_connection():

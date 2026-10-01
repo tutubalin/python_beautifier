@@ -59,13 +59,39 @@
 .nn-route-title code { color: var(--ink); font: 700 12px var(--font-mono); }
 .nn-route-title span { padding: 2px 7px; border-radius: 99px; background: var(--surface-3); color: var(--ink-3); font: 600 9px var(--font-ui); }
 .nn-svg-wrap { min-width: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); scrollbar-color: var(--line-2) transparent; }
-.nn-svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.nn-svg {
+  display: block; width: 100%; min-width: 760px; height: auto;
+  --nn-flow-0: color-mix(in oklab, #0072b2 86%, var(--ink));
+  --nn-flow-1: color-mix(in oklab, #d55e00 86%, var(--ink));
+  --nn-flow-2: color-mix(in oklab, #009e73 86%, var(--ink));
+  --nn-flow-3: color-mix(in oklab, #cc79a7 86%, var(--ink));
+  --nn-flow-4: color-mix(in oklab, #a16a00 86%, var(--ink));
+  --nn-flow-5: color-mix(in oklab, #4c6fbf 86%, var(--ink));
+  --nn-flow-6: color-mix(in oklab, #007f8b 86%, var(--ink));
+  --nn-flow-7: color-mix(in oklab, #7b4f9d 86%, var(--ink));
+}
 .nn-svg-port { fill: var(--surface); stroke: color-mix(in oklab, var(--nn) 38%, var(--line)); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .nn-svg-port-label { fill: var(--nn); font: 800 10px var(--font-ui); letter-spacing: 1.4px; }
 .nn-svg-port-shape { fill: var(--ink-2); font: 600 12px var(--font-mono); }
 .nn-svg-edges { fill: none; stroke: var(--nn); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .nn-svg marker path { fill: var(--nn); }
-.nn-edge.nn-skip { stroke: color-mix(in oklab, var(--c-if) 78%, var(--nn)); stroke-dasharray: 5 4; }
+.nn-edge.nn-skip { stroke-width: 2.7; stroke-dasharray: 5 4; }
+.nn-edge.nn-skip.nn-flow-0 { stroke: var(--nn-flow-0); }
+.nn-edge.nn-skip.nn-flow-1 { stroke: var(--nn-flow-1); }
+.nn-edge.nn-skip.nn-flow-2 { stroke: var(--nn-flow-2); }
+.nn-edge.nn-skip.nn-flow-3 { stroke: var(--nn-flow-3); }
+.nn-edge.nn-skip.nn-flow-4 { stroke: var(--nn-flow-4); }
+.nn-edge.nn-skip.nn-flow-5 { stroke: var(--nn-flow-5); }
+.nn-edge.nn-skip.nn-flow-6 { stroke: var(--nn-flow-6); }
+.nn-edge.nn-skip.nn-flow-7 { stroke: var(--nn-flow-7); }
+.nn-svg marker.nn-arrowhead-0 path { fill: var(--nn-flow-0); }
+.nn-svg marker.nn-arrowhead-1 path { fill: var(--nn-flow-1); }
+.nn-svg marker.nn-arrowhead-2 path { fill: var(--nn-flow-2); }
+.nn-svg marker.nn-arrowhead-3 path { fill: var(--nn-flow-3); }
+.nn-svg marker.nn-arrowhead-4 path { fill: var(--nn-flow-4); }
+.nn-svg marker.nn-arrowhead-5 path { fill: var(--nn-flow-5); }
+.nn-svg marker.nn-arrowhead-6 path { fill: var(--nn-flow-6); }
+.nn-svg marker.nn-arrowhead-7 path { fill: var(--nn-flow-7); }
 .nn-svg-node rect { fill: var(--surface); stroke: color-mix(in oklab, var(--nn) 32%, var(--line)); stroke-width: 1.4; }
 .nn-svg-node > title { color: var(--ink); }
 .nn-svg-name { fill: var(--ink); font: 700 12px var(--font-mono); }
