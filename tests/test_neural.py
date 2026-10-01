@@ -104,10 +104,10 @@ def test_plain_classes_are_not_misclassified():
         assert not analyze(Source(code)), code
 
 
-def test_a_detected_base_without_forward_gets_an_explanation_not_a_fake_graph():
+def test_a_detected_base_without_a_layer_calling_method_gets_an_explanation_not_a_fake_graph():
     schema = _schema("from torch import nn\nclass Net(nn.Module): pass\n")
     assert not schema.steps
-    assert "No forward() method" in schema.notes[0]
+    assert "No method body calling a declared layer" in schema.notes[0]
 
 
 def test_conv_pool_flatten_linear_shapes_propagate_from_forward_docstring():
@@ -257,7 +257,7 @@ class Net(nn.Module):
 def test_lookalike_without_a_real_model_library_is_explicitly_uncertain():
     html = beautify("class Net:\n    def __init__(self): self.fc = Linear(8, 4)\n    def forward(self, x): return self.fc(x)\n")
     assert "module-like pattern" in html
-    assert "no model code is run" in html
+    assert "model code is never run" in html
     assert "[\u2026, 8]" in html and "[\u2026, 4]" in html
 
 

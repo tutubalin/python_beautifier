@@ -61,6 +61,18 @@ class Step:
 
 
 @dataclass
+class Route:
+    """One statically traced method that executes layers."""
+
+    method_name: str
+    input_name: str
+    input_shape: Shape
+    steps: List[Step]
+    output_shapes: List[Shape]
+    notes: List[str]
+
+
+@dataclass
 class Schema:
     """Architecture summary attached to one class card."""
 
@@ -73,6 +85,8 @@ class Schema:
     output_shapes: List[Shape]
     notes: List[str]
     declared: int = 0
+    method_name: str = "forward"
+    routes: List[Route] = field(default_factory=list)
 
 
 def _dotted(node: Optional[ast.AST]) -> str:
@@ -92,6 +106,17 @@ def _tail(name: str) -> str:
 
 def _classes(tree: ast.AST) -> Dict[str, ast.ClassDef]:
     return {n.name: n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)}
+
+
+def _imported_names(tree: ast.AST) -> Set[str]:
+    """Names imported into this module, used to recognize opaque custom layer classes."""
+    names: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            names.update(alias.asname or alias.name for alias in node.names)
+        elif isinstance(node, ast.Import):
+            names.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+    return names
 
 
 def _aliases(tree: ast.AST) -> Tuple[Set[str], Set[str], Dict[str, str]]:
@@ -181,7 +206,7 @@ def _inherited_method(
     return None
 
 
-def _inherited_specs(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], nn: Set[str], layers: Set[str], called: Set[str], seen: Optional[Set[str]] = None) -> Dict[str, Spec]:
+def _inherited_specs(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], nn: Set[str], layers: Set[str], called: Set[str], imported: Set[str], seen: Optional[Set[str]] = None) -> Dict[str, Spec]:
     seen = set() if seen is None else seen
     out: Dict[str, Spec] = {}
     for base in node.bases:
@@ -190,8 +215,8 @@ def _inherited_specs(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], nn: S
         if parent is None or key in seen:
             continue
         seen.add(key)
-        out.update(_inherited_specs(parent, classes, nn, layers, called, seen))
-        out.update(_declared(parent, nn, layers, classes, called))
+        out.update(_inherited_specs(parent, classes, nn, layers, called, imported, seen))
+        out.update(_declared(parent, nn, layers, classes, called, imported))
     return out
 
 
@@ -325,10 +350,11 @@ def _called_self_attrs(method: Optional[ast.FunctionDef | ast.AsyncFunctionDef])
     return {name for call in ast.walk(method) if isinstance(call, ast.Call) and (name := _self_attr(call.func))}
 
 
-def _declared(node: ast.ClassDef, nn: Set[str], layer_aliases: Dict[str, str], local: Dict[str, ast.ClassDef], called: Optional[Set[str]] = None) -> Dict[str, Spec]:
+def _declared(node: ast.ClassDef, nn: Set[str], layer_aliases: Dict[str, str], local: Dict[str, ast.ClassDef], called: Optional[Set[str]] = None, imported: Optional[Set[str]] = None) -> Dict[str, Spec]:
     init = _class_method(node, "__init__")
     specs: Dict[str, Spec] = {}
     called = called or set()
+    imported = imported or set()
     if init is None:
         return specs
     statements = sorted(analysis.walk_scope(init), key=lambda n: (getattr(n, "lineno", 0), getattr(n, "col_offset", 0)))
@@ -346,8 +372,15 @@ def _declared(node: ast.ClassDef, nn: Set[str], layer_aliases: Dict[str, str], l
             name = _self_attr(target)
             spec = _make_spec(value, name or "", nn, layer_aliases, local)
             if name and spec is None and name in called and isinstance(value, ast.Call):
-                # Imported/custom child module whose constructor is out of this file's reach.
-                spec = Spec(_tail(_dotted(value.func)) or "CustomModule", name, shown_params="custom module", custom=True)
+                # Only treat an opaque constructor as a custom module when its class is defined
+                # locally and has a forward body. Arbitrary callable attributes (e.g. object())
+                # are not enough to classify an ordinary class as a neural model.
+                kind = _tail(_dotted(value.func)) or "CustomModule"
+                child_cls = local.get(kind)
+                local_module = child_cls is not None and _class_method(child_cls, "forward") is not None
+                imported_module = kind in imported and kind[:1].isupper() and kind not in {"Object", "Path"}
+                if local_module or imported_module:
+                    spec = Spec(kind, name, shown_params="custom module", custom=True)
             if name and spec:
                 specs[name] = spec
     return specs
@@ -465,9 +498,19 @@ class _Value:
 
 
 class _Tracer:
-    def __init__(self, src: Source, specs: Dict[str, Spec], input_name: str, initial: Shape):
+    def __init__(
+        self,
+        src: Source,
+        specs: Dict[str, Spec],
+        input_name: str,
+        initial: Shape,
+        methods: Optional[Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]] = None,
+    ):
         self.src = src
         self.specs = specs
+        self.methods = methods or {}
+        self.inline_stack: List[str] = []
+        self.return_values: List[_Value] = []
         self.input_name = input_name
         self.initial = initial
         self.steps: List[Step] = []
@@ -528,6 +571,8 @@ class _Tracer:
                     arg = _Value(("input",), self.initial)
                 if spec:
                     return self._apply(spec, arg, getattr(node, "lineno", 0))
+                if attr in self.methods and attr not in self.inline_stack and len(self.inline_stack) < 8:
+                    return self._inline(self.methods[attr], node, env, arg)
                 kind = attr.rsplit(".", 1)[-1]
                 return self._add(Spec(kind, attr, custom=True, shown_params="custom/dynamic"), arg, getattr(node, "lineno", 0))
             if isinstance(node.func, ast.Name) and node.func.id in self.loop_specs:
@@ -630,6 +675,44 @@ class _Tracer:
             vals = [v for v in vals if v]
             return _Value(tuple(dict.fromkeys(p for v in vals for p in v.producers)), vals[0].shape) if vals else None
         return None
+
+    def _inline(
+        self,
+        method: ast.FunctionDef | ast.AsyncFunctionDef,
+        call: ast.Call,
+        caller_env: Dict[str, _Value],
+        first_value: _Value,
+    ) -> Optional[_Value]:
+        """Inline a small local helper so an entrypoint can be traced through it."""
+        params = [a for a in method.args.posonlyargs + method.args.args if a.arg not in ("self", "cls")]
+        local: Dict[str, _Value] = {}
+        if params:
+            local[params[0].arg] = first_value
+        for param, argument in zip(params[1:], call.args[1:]):
+            value = self._eval(argument, caller_env)
+            if value is not None:
+                local[param.arg] = value
+        by_name = {kw.arg: kw.value for kw in call.keywords if kw.arg}
+        for param in params[1:]:
+            if param.arg in by_name:
+                value = self._eval(by_name[param.arg], caller_env)
+                if value is not None:
+                    local[param.arg] = value
+        saved_returns = self.return_values
+        self.return_values = []
+        self.inline_stack.append(method.name)
+        try:
+            self._block(method.body, local)
+            returned = self.return_values
+        finally:
+            self.inline_stack.pop()
+            self.return_values = saved_returns
+        if not returned:
+            return None
+        shapes = [v.shape for v in returned]
+        shape = shapes[0] if all(candidate == shapes[0] for candidate in shapes) else ("?",)
+        producers = tuple(dict.fromkeys(p for value in returned for p in value.producers))
+        return _Value(producers or ("input",), shape)
 
     def _apply(self, spec: Spec, value: _Value, line: int) -> _Value:
         if spec.kind in ("Sequential", "ModuleList", "ModuleDict") and spec.children:
@@ -758,7 +841,7 @@ class _Tracer:
         if isinstance(stmt, ast.Return):
             value = self._eval(stmt.value, env)
             if value:
-                self.outputs.append(value.shape)
+                self.return_values.append(value)
             return env
         if isinstance(stmt, ast.If):
             self._eval(stmt.test, env)
@@ -837,8 +920,9 @@ class _Tracer:
         args = forward.args.posonlyargs + forward.args.args
         self.input_name = next((a.arg for a in args if a.arg not in ("self", "cls")), "input")
         self.initial = _shape_hint(forward, self.src, self.input_name) or self.initial
-        self.outputs: List[Shape] = []
+        self.return_values = []
         self._block(forward.body, {})
+        self.outputs = [value.shape for value in self.return_values]
         return self.steps, self.outputs, self.notes, self.used
 
 
@@ -870,10 +954,88 @@ def _initial_shape(specs: Dict[str, Spec]) -> Shape:
     return ("…", str(spec.params.get("in_channels") or "C"), *("H" if i == 0 else "W" if i == 1 else "D" for i in range(rank)))
 
 
+def _class_methods(node: ast.ClassDef, classes: Dict[str, ast.ClassDef], seen: Optional[Set[str]] = None) -> Dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Methods visible on a class, including local bases, with child overrides winning."""
+    seen = set() if seen is None else seen
+    if node.name in seen:
+        return {}
+    seen.add(node.name)
+    out: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
+    for base in node.bases:
+        parent = classes.get(_tail(_dotted(base)))
+        if parent is not None:
+            out.update(_class_methods(parent, classes, seen))
+    out.update({
+        s.name: s for s in node.body
+        if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef))
+    })
+    return out
+
+
+def _declared_ref(attr: str, specs: Dict[str, Spec]) -> bool:
+    if attr in specs:
+        return True
+    head, dot, tail = attr.partition(".")
+    parent = specs.get(head)
+    return bool(parent and dot and (tail.isdigit() or any(c.name.rsplit(".", 1)[-1] == tail for c in parent.children)))
+
+
+def _layer_calls(method: ast.FunctionDef | ast.AsyncFunctionDef, specs: Dict[str, Spec]) -> Set[str]:
+    """Calls to declared module attributes, recognized by expression content, not method name."""
+    nodes = analysis.walk_scope(method)
+    refs = {
+        attr for call in nodes if isinstance(call, ast.Call)
+        if (attr := _self_attr(call.func)) and _declared_ref(attr, specs)
+    }
+    # A ModuleList/Sequential is often invoked through its loop variable, so the module
+    # attribute occurs in the iterator expression rather than as a call target.
+    refs.update(
+        attr for loop in analysis.walk_scope(method) if isinstance(loop, (ast.For, ast.AsyncFor))
+        if (attr := _self_attr(loop.iter)) and _declared_ref(attr, specs)
+    )
+    return refs
+
+
+def _method_calls(method: ast.FunctionDef | ast.AsyncFunctionDef) -> Set[str]:
+    """Calls from this method to other methods on self/cls."""
+    return {
+        attr for call in analysis.walk_scope(method) if isinstance(call, ast.Call)
+        if (attr := _self_attr(call.func)) and "." not in attr
+    }
+
+
+def _execution_methods(methods: Dict[str, ast.FunctionDef | ast.AsyncFunctionDef], specs: Dict[str, Spec]) -> List[ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Find top-level methods whose bodies reach calls to declared layers.
+
+    ``forward`` is preferred only when it is actually present in the content-derived call graph.
+    Otherwise methods such as ``forward_kv_extract``, ``forward_kv_cached`` or ``run_encoder`` are
+    found because they call layer attributes. Helpers called by another layer-using method are
+    treated as implementation details rather than separate entry points.
+    """
+    candidates = {name: method for name, method in methods.items() if name not in ("__init__", "__new__")}
+    relevant = {name for name, method in candidates.items() if _layer_calls(method, specs)}
+    # If an entrypoint delegates to an internal helper, include the caller in the content-derived
+    # graph. _Tracer inlines these local helpers, so the path still ends at the actual layer nodes.
+    changed = True
+    while changed:
+        changed = False
+        for name, method in candidates.items():
+            if name not in relevant and _method_calls(method) & relevant:
+                relevant.add(name)
+                changed = True
+    called_by = {
+        callee for name in relevant for callee in _method_calls(candidates[name])
+        if callee in relevant
+    }
+    roots = [candidates[name] for name in candidates if name in relevant and name not in called_by]
+    return roots or [candidates[name] for name in candidates if name in relevant]
+
+
 def analyze(src: Source) -> Dict[int, Schema]:
-    """Find module-like classes, then trace their declared layers through ``forward``."""
+    """Find module-like classes and trace methods whose contents invoke declared layers."""
     classes = _classes(src.tree)
     nn, module_names, layer_aliases = _aliases(src.tree)
+    imported = _imported_names(src.tree)
     module_like: Set[str] = set()
     detection: Dict[str, Tuple[str, str]] = {}
     # Resolve inheritance to a fixed point so local intermediate base classes work.
@@ -892,33 +1054,44 @@ def analyze(src: Source) -> Dict[int, Schema]:
             break
     result: Dict[int, Schema] = {}
     for name, node in classes.items():
-        forward = _class_method(node, "forward") or _inherited_method(node, classes, "forward")
-        if forward is None:
+        methods = _class_methods(node, classes)
+        called = set().union(*(_called_self_attrs(m) for m in methods.values())) if methods else set()
+        specs = _inherited_specs(node, classes, nn, layer_aliases, called, imported)
+        specs.update(_declared(node, nn, layer_aliases, classes, called, imported))
+        routes_methods = _execution_methods(methods, specs)
+        direct_layers = [s for s in specs.values() if s.kind not in ("Sequential", "ModuleList", "ModuleDict") or s.children]
+
+        if name not in module_like:
+            # A plain class only qualifies if its code actually calls a declared module-like child.
+            custom_children = any(s.custom and s.kind in classes and _class_method(classes[s.kind], "forward") for s in specs.values())
+            if not (routes_methods and (direct_layers or custom_children)):
+                continue
+            detection[name] = ("lookalike", "contains methods that call layer-like attributes")
+
+        routes: List[Route] = []
+        for method in routes_methods:
+            input_name = next((a.arg for a in method.args.posonlyargs + method.args.args if a.arg not in ("self", "cls")), "input")
+            initial = _shape_hint(method, src, input_name) or _initial_shape(specs)
+            tracer = _Tracer(src, specs, input_name, initial, methods)
+            steps, outputs, notes, used = tracer.trace(method)
+            unused = [k for k in specs if k not in used]
+            if unused:
+                notes.append("Declared modules not observed in this method: " + ", ".join(unused[:8]) + (" …" if len(unused) > 8 else "."))
+            if not steps:
+                notes.append("No declared layer calls could be traced from this method.")
+            routes.append(Route(method.name, input_name, tracer.initial, steps, outputs, notes))
+
+        if not routes:
             if name in module_like:
                 result[id(node)] = Schema(
                     name, detection[name][0], detection[name][1], "input", ("…", "?"), [], [],
-                    ["No forward() method is defined in this class."], 0,
+                    ["No method body calling a declared layer was detected."], len(specs), "", [],
                 )
             continue
-        called = _called_self_attrs(forward)
-        specs = _inherited_specs(node, classes, nn, layer_aliases, called)
-        specs.update(_declared(node, nn, layer_aliases, classes, called))
-        direct_layers = [s for s in specs.values() if s.kind not in ("Sequential", "ModuleList", "ModuleDict") or s.children]
-        if name not in module_like:
-            # Structural lookalike: a forward method and at least one declared module-like child,
-            # either from a known layer constructor or from a custom class with its own forward.
-            custom_children = any(s.custom and s.kind in classes and _class_method(classes[s.kind], "forward") for s in specs.values())
-            if not (forward and (direct_layers or custom_children)):
-                continue
-            detection[name] = ("lookalike", "has a forward() method and layer-like attributes")
-        input_name = next((a.arg for a in forward.args.posonlyargs + forward.args.args if a.arg not in ("self", "cls")), "input")
-        initial = _shape_hint(forward, src, input_name) or _initial_shape(specs)
-        tracer = _Tracer(src, specs, input_name, initial)
-        steps, outputs, notes, used = tracer.trace(forward)
-        unused = [k for k in specs if k not in used]
-        if unused:
-            notes.append("Declared modules not observed in forward(): " + ", ".join(unused[:8]) + (" …" if len(unused) > 8 else "."))
-        if not steps:
-            notes.append("No declared layer calls could be traced from forward().")
-        result[id(node)] = Schema(name, detection[name][0], detection[name][1], input_name, tracer.initial, steps, outputs, notes, len(specs))
+
+        primary = routes[0]
+        result[id(node)] = Schema(
+            name, detection[name][0], detection[name][1], primary.input_name, primary.input_shape,
+            primary.steps, primary.output_shapes, primary.notes, len(specs), primary.method_name, routes,
+        )
     return result

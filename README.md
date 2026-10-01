@@ -127,19 +127,28 @@ PyTorch, JAX, pandas, ...), because `handlers[None]` is just a dictionary lookup
 
 ### A static schema for PyTorch models
 
-When a class inherits `torch.nn.Module` (including through a local base class), the card tries to
-trace the layers declared in `__init__` through `forward()`. It also recognizes a module-like
-pattern: a `forward()` method that calls layer attributes created in `__init__`. You do not need
-torch installed; the source is parsed, never imported or run.
+When a class inherits `torch.nn.Module` (including through a local base class), the card searches
+its methods for calls to child layers declared in `__init__`. It does not assume the entrypoint is
+named `forward`: methods such as `forward_kv_extract`, `forward_kv_cached` or `encode_tokens` are
+recognized from what they call. Distinct layer-using methods get separate paths. Plain classes with
+the same layer-call pattern are also recognized as module-like. You do not need torch installed;
+the source is parsed, never imported or run.
 
-The diagram expands `nn.Sequential`, traces `ModuleList` loops once, connects each step to its
-input, marks elementwise residual merges, and annotates tensor shape before and after each layer.
-It understands common `Linear`, convolution, pooling, normalization, activation, flatten and shape
-operations. Input dimensions come from a shape in the `forward()` docstring or a tensor-shape
-type annotation when available; otherwise it starts with symbolic dimensions such as `[…, 3, H, W]`.
-Known `Conv2d`/pool formulas are propagated, and output feature dimensions come from the layer config.
+Each path gets an inline SVG data-flow diagram, with arrows between layers, skip/merge connections,
+and input/output tensor dimensions. An expandable text trace lists exact connections and parameters.
+The diagram expands `nn.Sequential`, traces `ModuleList` loops once, marks elementwise residual
+merges, and annotates tensor shape before and after each layer. It understands common `Linear`,
+convolution, pooling, normalization, activation, flatten and shape operations. Input dimensions come
+from a shape in the selected method's docstring or a tensor-shape type annotation when available;
+otherwise it starts with symbolic dimensions such as `[…, 3, H, W]`. Known `Conv2d`/pool formulas are
+propagated, and output feature dimensions come from the layer config.
 
-![Static schema: a convolutional model with two connected branches and tensor dimensions](docs/model-schema.png)
+![Inline SVG schema: convolution branches, a residual merge and tensor dimensions](docs/model-schema.png)
+
+Layer-using methods are discovered by their contents, not just the name `forward`. Separate methods
+such as `forward_kv_extract` and `forward_kv_cached` each get their own SVG path:
+
+![Two independent schemas for alternate key-value methods](docs/model-entrypoints.png)
 
 This is best-effort static analysis. Unknown sizes stay symbolic; an imported custom block is shown
 as an opaque node rather than guessed. Both sides of a conditional are shown as alternatives, not
@@ -237,7 +246,7 @@ All thresholds are named constants at the top of
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e . pytest
-pytest                                                    # 370+ tests, a few seconds
+pytest                                                    # 380+ tests, a few seconds
 python -m python_beautifier examples/showcase.py -o examples/showcase.html   # refresh the examples
 python -m python_beautifier examples/tensor_indexing.py -o examples/tensor_indexing.html
 python -m python_beautifier examples/vision_model.py -o examples/vision_model.html

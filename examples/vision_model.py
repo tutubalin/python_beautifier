@@ -46,6 +46,23 @@ class TinyVisionNet(TorchModel):
         return self.classifier(flattened)
 
 
+class KVProjection(nn.Module):
+    """A module with two content-detected entrypoints rather than ``forward``."""
+
+    def __init__(self):
+        super().__init__()
+        self.kv_extract = nn.Linear(64, 128)
+        self.kv_cached = nn.Linear(64, 64)
+
+    def forward_kv_extract(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        """Extract concatenated key/value features from ``(B, T, 64)`` states."""
+        return self.kv_extract(hidden_states)
+
+    def forward_kv_cached(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        """Project a cached key/value state of shape ``(B, T, 64)``."""
+        return self.kv_cached(hidden_states)
+
+
 class LooksLikeATorchModel:
     """Detected structurally: a forward method calls named layer-like attributes."""
 
