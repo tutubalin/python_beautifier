@@ -13,6 +13,7 @@ from .. import __version__
 from ..docstrings import first_sentence, inline_html
 from ..highlight import fragment
 from ..model import DefInfo, ModuleInfo
+from ..neural import analyze as analyze_neural
 from ..source import Source
 from . import widgets
 from .cards import Cards
@@ -32,7 +33,7 @@ def read_asset(name: str) -> str:
 def stylesheet() -> str:
     """All CSS, plus the dark tokens again for ``theme=auto`` on dark systems."""
     base = read_asset("base.css")
-    css = "\n".join([base, read_asset("cards.css"), read_asset("flow.css")])
+    css = "\n".join([base, read_asset("cards.css"), read_asset("flow.css"), read_asset("neural.css")])
     m = re.search(r"/\*DARK\{\*/(.*?)/\*\}DARK\*/", base, re.S)
     if m:
         auto = m.group(1).replace('html[data-theme="dark"]', 'html[data-theme="auto"]')
@@ -53,6 +54,7 @@ class Renderer:
         self.title = title
         self.flow = Flow(self)
         self.cards = Cards(self)
+        self.neural_schemas = analyze_neural(self.src)
         self._classes: Dict[str, DefInfo] = {}
         for d in mod.defs:
             if d.is_class and d.parent is None:

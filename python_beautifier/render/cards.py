@@ -10,6 +10,7 @@ from ..model import DefInfo, ParamInfo
 from . import widgets
 from .flow import Ctx
 from .icons import icon
+from .neural import render as render_neural
 from .prose import blocks_html, section_html
 from .util import attr, esc, plural
 
@@ -461,6 +462,9 @@ class Cards:
             else:
                 parts.append(f'<section class="sec sec-doc">{inner}</section>')
         if is_cls:
+            schema = self.r.neural_schemas.get(id(node))
+            if schema is not None:
+                parts.append(render_neural(schema))
             parts.append(self.attrs_table(d))
             parts.append(self.methods_table(d))
         else:
