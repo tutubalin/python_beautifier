@@ -135,14 +135,18 @@ class Net(nn.Module):
     def forward(self, x):
         a = self.a(x)
         b = self.b(x)
-        a = self.c(a)
-        b = self.d(b)
-        return a + b
+        merged = a + b
+        c = self.c(merged)
+        d = self.d(c)
+        return c + d
 '''
     html = beautify(code)
     paths = re.findall(r'<path class="nn-edge nn-skip nn-flow-\d+" d="([^"]+)"', html)
     rails = [re.search(r"H (\d+) V", path).group(1) for path in paths]
-    assert len(paths) == len(set(rails)) == 4
+    assert len(paths) == 4
+    assert len(set(rails)) == 2  # two independent merges reuse the same two clear lanes
+    assert set(rails[:2]) == set(rails[2:])
+    assert rails[0] != rails[1] and rails[2] != rails[3]
     for color in range(4):
         assert f'class="nn-edge nn-skip nn-flow-{color}"' in html
         assert f'id="nn-0-Net-arrow-skip-{color}"' in html

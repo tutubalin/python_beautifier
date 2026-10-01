@@ -67,6 +67,7 @@ def _svg(route: Route, uid: str) -> str:
     skip_edge_count = 0
     skip_color_count = 8
     skip_colors: set[int] = set()
+    skip_lane_intervals: List[List[tuple[float, float]]] = []
     farthest_rail = 0
     for target_i, step in enumerate(steps):
         incoming = step.incoming or ("input",)
@@ -82,10 +83,19 @@ def _svg(route: Route, uid: str) -> str:
             if parent_i == target_i - 1 and len(incoming) == 1:
                 edge_bits.append(f'<path class="nn-edge" d="M {cx:g} {y[parent_i] + _NODE_H} V {y[target_i]}" marker-end="url(#{uid}-arrow)"/>')
             else:
-                rail = _NODE_X + _NODE_W + 18 + skip_edge_count * 12
-                farthest_rail = max(farthest_rail, rail)
                 source_y = y[parent_i] + _NODE_H / 2
                 target_y = y[target_i] + _NODE_H / 2
+                interval = (min(source_y, target_y), max(source_y, target_y))
+                lane_index = next(
+                    (i for i, occupied in enumerate(skip_lane_intervals)
+                     if all(interval[1] < start or interval[0] > end for start, end in occupied)),
+                    len(skip_lane_intervals),
+                )
+                if lane_index == len(skip_lane_intervals):
+                    skip_lane_intervals.append([])
+                skip_lane_intervals[lane_index].append(interval)
+                rail = _NODE_X + _NODE_W + 18 + lane_index * 12
+                farthest_rail = max(farthest_rail, rail)
                 color_index = skip_edge_count % skip_color_count
                 skip_edge_count += 1
                 skip_colors.add(color_index)
