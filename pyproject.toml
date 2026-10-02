@@ -26,6 +26,7 @@ Homepage = "https://github.com/tutubalin/python_beautifier"
 
 [project.scripts]
 pybeautify = "python_beautifier.cli:main"
+pybeautify-graph = "python_beautifier.graph_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["python_beautifier*"]

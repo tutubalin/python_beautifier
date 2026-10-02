@@ -144,6 +144,17 @@ class Net(nn.Module):
     assert 'class="nn-svg nn-svg-2d"' in html
     assert 'class="nn-2d-kernel"' in html and "3×3" in html
     assert 'class="nn-2d-node nn-2d-merge"' in html
+    edge_matches = re.findall(
+        r'<path class="nn-2d-edge nn-2d-skip nn-flow-(\d+)" d="([^"]+)" data-source="([^"]+)" data-target="[^"]+" data-lane="(\d+)"',
+        html,
+    )
+    assert edge_matches
+    lanes_by_source = {source: lane for _, _, source, lane in edge_matches}
+    colors_by_source = {source: color for color, _, source, _ in edge_matches}
+    assert len(set(lanes_by_source.values())) == len(lanes_by_source)
+    assert len(set(colors_by_source.values())) == len(colors_by_source)
+    assert 'class="nn-2d-edge nn-2d-output-edge"' in html
+    assert html.index('class="nn-svg-2d-edges"') > html.index('class="nn-svg-port nn-2d-port"')
     assert 'class="nn-route-title"><code>forward()' in html
 
 
@@ -200,7 +211,7 @@ class Net(nn.Module):
     assert late_input.count("Q ") >= 3
 
 
-def test_adjacent_merge_input_stays_a_normal_arrow_and_skip_lanes_are_reused():
+def test_adjacent_merge_input_stays_normal_and_skip_sources_get_distinct_lanes():
     code = '''
 from torch import nn
 class Net(nn.Module):
@@ -222,7 +233,7 @@ class Net(nn.Module):
     paths = re.findall(r'<path class="nn-edge nn-skip nn-flow-\d+" d="([^"]+)"', html)
     rails = [re.search(r"Q (\d+) [\d.]+", path).group(1) for path in paths]
     assert len(paths) == 2  # only the non-adjacent branch at each merge is a skip connection
-    assert len(set(rails)) == 1  # independent, non-overlapping routes reuse their lane
+    assert len(set(rails)) == 2  # different source layers keep distinct rail positions
     assert 'class="nn-edge" d="M 545 258 V 290"' in html  # previous layer uses the normal arrow
     for color in range(2):
         assert f'class="nn-edge nn-skip nn-flow-{color}"' in html
@@ -278,8 +289,11 @@ class Net(nn.Module):
         return a + d
 '''
     html = beautify(code)
-    edges = re.findall(r'<path class="nn-edge nn-skip nn-flow-(\d+)" d="([^"]+)"', html)
-    from_first_layer = [color for color, path in edges if path.startswith("M 935 133")]
+    edges = re.findall(
+        r'<path class="nn-edge nn-skip nn-flow-(\d+)" d="([^"]+)" data-source="([^"]+)" data-target="[^"]+" data-lane="(\d+)"',
+        html,
+    )
+    from_first_layer = [(color, lane) for color, path, source, lane in edges if path.startswith("M 935 133")]
     assert len(from_first_layer) == 2
     assert len(set(from_first_layer)) == 1
 

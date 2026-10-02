@@ -115,7 +115,7 @@ def _svg_linear(route: Route, uid: str) -> str:
     skip_color_count = 8
     skip_colors: set[int] = set()
     skip_color_by_source: Dict[str, int] = {}
-    skip_lane_intervals: List[List[tuple[float, float]]] = []
+    skip_lane_by_source: Dict[str, int] = {}
     farthest_rail = 0
     for target_i, step in enumerate(steps):
         incoming = step.incoming or ("input",)
@@ -127,7 +127,7 @@ def _svg_linear(route: Route, uid: str) -> str:
             producer: (rank - (len(skip_producers) - 1) / 2) * 5
             for rank, producer in enumerate(skip_producers)
         }
-        for branch_i, producer in enumerate(incoming):
+        for producer in incoming:
             if producer == "input" or producer not in index:
                 if target_i == 0:
                     edge_bits.append(f'<path class="nn-edge" d="M {cx:g} 67 V {y[target_i]}" marker-end="url(#{uid}-arrow)"/>')
@@ -135,7 +135,7 @@ def _svg_linear(route: Route, uid: str) -> str:
                     # Give input branches a short downward tail before they turn toward
                     # a later node; without it the route appears to sprout sideways
                     # directly from the input port.
-                    rail = _NODE_X - 18 - branch_i * 12
+                    rail = _NODE_X - 18  # all branches from the shared input port use one trunk
                     stub_y = 77
                     target_y = y[target_i] + _NODE_H / 2
                     d = _rounded_path([(cx, 67), (cx, stub_y), (rail, stub_y), (rail, target_y), (_NODE_X, target_y)])
@@ -147,15 +147,9 @@ def _svg_linear(route: Route, uid: str) -> str:
             else:
                 source_y = y[parent_i] + _NODE_H / 2
                 target_y = y[target_i] + _NODE_H / 2 + endpoint_offsets.get(producer, 0)
-                interval = (min(source_y, target_y), max(source_y, target_y))
-                lane_index = next(
-                    (i for i, occupied in enumerate(skip_lane_intervals)
-                     if all(interval[1] < start or interval[0] > end for start, end in occupied)),
-                    len(skip_lane_intervals),
-                )
-                if lane_index == len(skip_lane_intervals):
-                    skip_lane_intervals.append([])
-                skip_lane_intervals[lane_index].append(interval)
+                if producer not in skip_lane_by_source:
+                    skip_lane_by_source[producer] = len(skip_lane_by_source)
+                lane_index = skip_lane_by_source[producer]
                 rail = _NODE_X + _NODE_W + 18 + lane_index * 12
                 farthest_rail = max(farthest_rail, rail)
                 if producer not in skip_color_by_source:
@@ -168,7 +162,7 @@ def _svg_linear(route: Route, uid: str) -> str:
                     (rail, target_y),
                     (_NODE_X + _NODE_W, target_y),
                 ])
-                path = f'<path class="nn-edge nn-skip nn-flow-{color_index}" d="{d}" marker-end="url(#{uid}-arrow-skip-{color_index})"/>'
+                path = f'<path class="nn-edge nn-skip nn-flow-{color_index}" d="{d}" data-source="{attr(producer)}" data-target="{attr(step.ident)}" data-lane="{lane_index}" marker-end="url(#{uid}-arrow-skip-{color_index})"/>'
                 path_length = abs(target_i - parent_i)
                 skip_paths.append((target_i, path_length, path))
     # SVG paints later paths on top: group by destination, drawing the longer
@@ -303,8 +297,8 @@ def _svg_layered(route: Route, uid: str) -> str:
     max_rows = max((len(group) for group in groups), default=1)
     content_height = max_rows * _D2_ROW_STEP
 
-    # Reserve non-overlapping upper rails for long-range dependencies.
-    lane_intervals: List[List[tuple[float, float]]] = []
+    # Give each source layer one stable rail; all of its skip arrows share it.
+    lane_by_source: Dict[int, int] = {}
     skip_lanes: Dict[tuple[int, int], int] = {}
     skip_edges = [
         (parent, target)
@@ -313,18 +307,11 @@ def _svg_layered(route: Route, uid: str) -> str:
         if ranks[target] - ranks[parent] > 1
     ]
     for parent, target in skip_edges:
-        interval = (node_x[parent] + _D2_NODE_W + 14, node_x[target] - 14)
-        lane = next(
-            (i for i, occupied in enumerate(lane_intervals)
-             if all(interval[1] <= start or interval[0] >= end for start, end in occupied)),
-            len(lane_intervals),
-        )
-        if lane == len(lane_intervals):
-            lane_intervals.append([])
-        lane_intervals[lane].append(interval)
-        skip_lanes[(parent, target)] = lane
+        if parent not in lane_by_source:
+            lane_by_source[parent] = len(lane_by_source)
+        skip_lanes[(parent, target)] = lane_by_source[parent]
 
-    top_pad = 50 + 15 * len(lane_intervals)
+    top_pad = 50 + 15 * len(lane_by_source)
     node_y = [0.0] * len(steps)
     for group in groups:
         offset = (max_rows - len(group)) * _D2_ROW_STEP / 2 + (_D2_ROW_STEP - _D2_NODE_H) / 2
@@ -338,16 +325,6 @@ def _svg_layered(route: Route, uid: str) -> str:
         spacing = min(8.0, 24.0 / max(1, len(ordered) - 1))
         for order, parent in enumerate(ordered):
             incoming_offsets[(parent, target)] = (order - (len(ordered) - 1) / 2) * spacing
-
-    outgoing_skip: Dict[int, List[int]] = {}
-    for parent, target in skip_edges:
-        outgoing_skip.setdefault(parent, []).append(target)
-    source_offsets: Dict[tuple[int, int], float] = {}
-    for parent, targets in outgoing_skip.items():
-        ordered = sorted(targets, key=lambda target: (node_cy[target], target))
-        spacing = min(6.0, 20.0 / max(1, len(ordered) - 1))
-        for order, target in enumerate(ordered):
-            source_offsets[(parent, target)] = (order - (len(ordered) - 1) / 2) * spacing
 
     color_by_source: Dict[int, int] = {}
     colors: set[int] = set()
@@ -383,10 +360,15 @@ def _svg_layered(route: Route, uid: str) -> str:
             continue
         tx = node_x[target]
         ty = node_cy[target]
-        c1 = input_x + input_w + 42
-        c2 = tx - 42
+        input_bus_x = input_x + input_w + 20
+        d = _rounded_path([
+            (input_x + input_w, input_cy),
+            (input_bus_x, input_cy),
+            (input_bus_x, ty),
+            (tx, ty),
+        ], radius=6)
         edge_bits.append(
-            f'<path class="nn-2d-edge nn-2d-input" d="M {input_x + input_w} {input_cy:g} C {c1} {input_cy:g} {c2} {ty:g} {tx} {ty:g}" marker-end="url(#{uid}-2d-arrow)"/>'
+            f'<path class="nn-2d-edge nn-2d-input" d="{d}" marker-end="url(#{uid}-2d-arrow)"/>'
         )
 
     for target, parent_nodes in enumerate(parents):
@@ -406,8 +388,8 @@ def _svg_layered(route: Route, uid: str) -> str:
                 rail_y = 28 + lane * 14
                 stub = 14
                 d = _rounded_path([
-                    (sx, sy + source_offsets[(parent, target)]),
-                    (sx + stub, sy + source_offsets[(parent, target)]),
+                    (sx, sy),
+                    (sx + stub, sy),
                     (sx + stub, rail_y),
                     (tx - stub, rail_y),
                     (tx - stub, ty),
@@ -415,7 +397,7 @@ def _svg_layered(route: Route, uid: str) -> str:
                 ], radius=6)
                 color = color_by_source[parent]
                 edge_bits.append(
-                    f'<path class="nn-2d-edge nn-2d-skip nn-flow-{color}" d="{d}" marker-end="url(#{uid}-2d-arrow-skip-{color})"/>'
+                    f'<path class="nn-2d-edge nn-2d-skip nn-flow-{color}" d="{d}" data-source="{attr(steps[parent].ident)}" data-target="{attr(steps[target].ident)}" data-lane="{lane}" marker-end="url(#{uid}-2d-arrow-skip-{color})"/>'
                 )
 
     # Send graph sinks to the output along bottom rails, clear of intermediate nodes.
@@ -495,10 +477,8 @@ def _svg_layered(route: Route, uid: str) -> str:
             f'{icon_markup}{node_text}{expand}</g>{link_close}'
         )
 
-    output_port = (
-        f'<rect class="nn-svg-port nn-2d-port" x="{output_x}" y="{output_y:g}" width="{port_w}" height="{output_h}" rx="13"/>'
-        f'<text class="nn-svg-port-label" x="{output_x + port_w / 2}" y="{graph_center_y - 2:g}" text-anchor="middle">{esc(_clip(output_text, 26))}</text>'
-    )
+    output_port = f'<rect class="nn-svg-port nn-2d-port" x="{output_x}" y="{output_y:g}" width="{port_w}" height="{output_h}" rx="13"/>'
+    output_label = f'<text class="nn-svg-port-label" x="{output_x + port_w / 2}" y="{graph_center_y - 2:g}" text-anchor="middle">{esc(_clip(output_text, 20))}</text>'
     input_port = (
         f'<rect class="nn-svg-port nn-2d-port" x="{input_x}" y="{input_cy - 28:g}" width="{input_w}" height="56" rx="13"/>'
         f'<text class="nn-svg-port-label" x="{input_x + input_w / 2}" y="{input_cy - 5:g}" text-anchor="middle">INPUT</text>'
@@ -513,7 +493,7 @@ def _svg_layered(route: Route, uid: str) -> str:
         f'aria-label="{attr(f"{route.method_name} layered 2D model graph with {len(steps)} nodes")}">'
         f'<title>{esc(route.method_name)} · layered 2D model graph</title><desc>Left-to-right dependency graph. Each block shows its layer type and input/output dimensions; curved links distinguish sequential edges from long skip routes.</desc>'
         f'<defs><marker id="{uid}-2d-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker>{skip_markers}</defs>'
-        f'<g class="nn-svg-2d-edges">{"".join(edge_bits)}</g>{input_port}{"".join(nodes)}{output_port}'
+        f'{input_port}{output_port}{"".join(nodes)}<g class="nn-svg-2d-edges">{"".join(edge_bits)}</g>{output_label}'
         '</svg></div>'
     )
 
@@ -526,7 +506,7 @@ def _route(route: Route, uid: str) -> str:
     names = {s.ident: s.name for s in route.steps}
     count = f'{len(route.steps)} layer step' if len(route.steps) == 1 else f'{len(route.steps)} layer steps'
     suffix = "()" if route.kind == "method" else ""
-    mode_badge = '<em class="nn-layout-mode">layered 2D</em>' if _needs_2d(route) else ""
+    mode_badge = '<em class="nn-layout-mode" title="Drag the graph to pan">layered 2D · drag to pan</em>' if _needs_2d(route) else ""
     heading = f'<h5 class="nn-route-title"><code>{esc(route.method_name)}{suffix}</code><span>{count}</span>{mode_badge}</h5>'
     svg = _svg(route, uid)
     detailed = "".join(_step(step, names, uid) for step in route.steps)
@@ -543,7 +523,7 @@ def _route(route: Route, uid: str) -> str:
     )
     notes = "".join(f'<li>{esc(note)}</li>' for note in route.notes)
     note_html = f'<ul class="nn-notes">{notes}</ul>' if notes else ""
-    return f'<div class="nn-route">{heading}{svg}{detail}{note_html}</div>'
+    return f'<div class="nn-route" id="{attr(uid)}">{heading}{svg}{detail}{note_html}</div>'
 
 
 def render(schema: Schema) -> str:

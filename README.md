@@ -35,13 +35,22 @@ Without installing:
 python -m python_beautifier my_module.py -o my_module.html
 ```
 
+For a compact page focused only on model graphs, use the companion **`pybeautify-graph`** tool.
+It uses the same static analyzer and keeps no source walkthrough or documentation cards:
+
+```bash
+pybeautify-graph model.py --open          # writes model.graph.html
+python -m python_beautifier.graph_cli model.py -o model-graphs.html
+```
+
 From Python:
 
 ```python
-from python_beautifier import beautify, beautify_file
+from python_beautifier import beautify, beautify_file, beautify_graph
 
 html = beautify(open("my_module.py").read(), filename="my_module.py")   # -> str
-beautify_file("my_module.py", "out/my_module.html", theme="dark")        # writes the file
+beautify_file("my_module.py", "out/my_module.html", theme="dark")        # full documentation page
+graph_html = beautify_graph(open("my_module.py").read())                    # graph-focused page
 ```
 
 ## What you get
@@ -139,8 +148,9 @@ and input/output tensor dimensions. An expandable text trace lists exact connect
 The diagram expands `nn.Sequential`, traces `ModuleList` loops once, marks elementwise residual
 merges, and annotates tensor shape before and after each layer. Locally defined custom modules remain
 class-like nodes in the overview; click a module node (or its summary in the detailed trace) to expand
-its internals, with nested modules collapsed the same way. Skip arrows use separate reusable lanes,
-and converging arrows are layered longest-first with small endpoint offsets. Simple routes keep a
+its internals, with nested modules collapsed the same way. Skip arrows from the same source share
+one colored lane; different sources keep distinct lanes. Converging arrows are layered longest-first
+with small endpoint offsets. Large 2D graphs can be panned by dragging. Simple routes keep a
 compact linear view; dense skip graphs automatically use a layered 2D layout with color-coded edges,
 reordered blocks, and a 3×3 kernel glyph for known 3×3 convolutions. It understands common `Linear`,
 convolution, pooling, normalization, activation, flatten and shape operations. Input dimensions come

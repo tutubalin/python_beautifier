@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 __version__ = "0.1.0"
-__all__ = ["beautify", "beautify_file", "__version__"]
+__all__ = ["beautify", "beautify_file", "beautify_graph", "__version__"]
 
 
 def beautify(
@@ -46,6 +46,19 @@ def beautify(
     except (ValueError, RecursionError, MemoryError) as err:
         # ValueError: e.g. null bytes (Python < 3.12); the others: absurdly deep nesting
         return error_page(text, filename, err)
+
+
+def beautify_graph(
+    source: Union[str, bytes],
+    *,
+    filename: str = "<string>",
+    title: Optional[str] = None,
+    theme: str = "auto",
+) -> str:
+    """Render a focused, standalone HTML page containing only model graphs."""
+    from .graph_tool import beautify_graph as _beautify_graph
+
+    return _beautify_graph(source, filename=filename, title=title, theme=theme)
 
 
 def _render(text: str, filename: str, title: Optional[str], theme: str) -> str:

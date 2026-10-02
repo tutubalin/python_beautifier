@@ -123,6 +123,31 @@
     }
   });
 
+  /* ---- pan large layered graphs ---------------------------------------- */
+  $$(".nn-svg-wrap-2d").forEach(function (wrap) {
+    var drag = null;
+    function stopPan(e) {
+      if (!drag) return;
+      wrap.classList.remove("is-panning");
+      if (wrap.hasPointerCapture && wrap.hasPointerCapture(e.pointerId)) wrap.releasePointerCapture(e.pointerId);
+      drag = null;
+    }
+    wrap.addEventListener("pointerdown", function (e) {
+      if (e.button !== 0 || (e.target.closest && e.target.closest("a"))) return;
+      drag = { x: e.clientX, y: e.clientY, left: wrap.scrollLeft, top: wrap.scrollTop };
+      wrap.classList.add("is-panning");
+      if (wrap.setPointerCapture) wrap.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    wrap.addEventListener("pointermove", function (e) {
+      if (!drag) return;
+      wrap.scrollLeft = drag.left - (e.clientX - drag.x);
+      wrap.scrollTop = drag.top - (e.clientY - drag.y);
+    });
+    wrap.addEventListener("pointerup", stopPan);
+    wrap.addEventListener("pointercancel", stopPan);
+  });
+
   /* ---- sidebar: tree toggles, search, scrollspy ------------------------ */
   $$(".ol-t").forEach(function (t) {
     t.addEventListener("click", function () { t.parentElement.classList.toggle("collapsed"); });

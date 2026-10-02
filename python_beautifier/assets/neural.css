@@ -122,7 +122,8 @@
 .nn-svg-output { fill: var(--nn); font: 800 11px var(--font-mono); letter-spacing: .3px; }
 
 /* ---------- layered two-dimensional DAG for dense model paths ------------- */
-.nn-svg-wrap-2d { overflow: auto; }
+.nn-svg-wrap-2d { max-height: min(78vh, 900px); overflow: auto; cursor: grab; touch-action: none; }
+.nn-svg-wrap-2d.is-panning { cursor: grabbing; user-select: none; }
 .nn-svg-2d { min-width: 0; }
 .nn-svg-2d-edges { fill: none; stroke: var(--ink-4); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .nn-2d-edge { fill: none; stroke-linecap: round; stroke-linejoin: round; }
