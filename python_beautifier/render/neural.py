@@ -101,10 +101,13 @@ def _svg(route: Route, uid: str) -> str:
         for branch_i, producer in enumerate(incoming):
             if producer == "input" or producer not in index:
                 if target_i == 0:
-                    edge_bits.append(f'<path class="nn-edge" d="M {cx:g} 67 V {y[target_i]}" marker-end="url(#{uid}-arrow)"/>')
+                    # Leave a small visible gap between the arrowhead and the first node.
+                    arrow_tip_y = y[target_i] - 6
+                    edge_bits.append(f'<path class="nn-edge" d="M {cx:g} 67 V {arrow_tip_y}" marker-end="url(#{uid}-arrow)"/>')
                 else:
                     rail = _NODE_X - 18 - branch_i * 12
-                    edge_bits.append(f'<path class="nn-edge" d="M {cx:g} 67 H {rail} V {y[target_i] + _NODE_H / 2} H {_NODE_X}" marker-end="url(#{uid}-arrow)"/>')
+                    arrow_tip_x = _NODE_X - 6
+                    edge_bits.append(f'<path class="nn-edge" d="M {cx:g} 67 H {rail} V {y[target_i] + _NODE_H / 2} H {arrow_tip_x}" marker-end="url(#{uid}-arrow)"/>')
                 continue
             parent_i = index[producer]
             if parent_i == target_i - 1 and len(incoming) == 1:
@@ -135,7 +138,7 @@ def _svg(route: Route, uid: str) -> str:
     # vertical routes first and short paths last so converging arrowheads remain visible.
     edge_bits.extend(path for _, _, path in sorted(skip_paths, key=lambda item: (item[0], -item[1])))
     skip_markers = "".join(
-        f'<marker class="nn-arrowhead-{i}" id="{uid}-arrow-skip-{i}" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker>'
+        f'<marker class="nn-arrowhead-{i}" id="{uid}-arrow-skip-{i}" markerWidth="9" markerHeight="8" refX="8.5" refY="4" orient="auto"><path d="M 0.7 0.2 Q 0 0 0 0.9 V 7.1 Q 0 8 0.7 7.6 L 7.6 4.5 Q 8.7 4 7.6 3.5 Z"/></marker>'
         for i in sorted(skip_colors)
     )
     nodes: List[str] = []
@@ -182,7 +185,7 @@ def _svg(route: Route, uid: str) -> str:
         f'<div class="nn-svg-wrap"><svg class="nn-svg" viewBox="0 0 {view_width} {height}" role="group" '
         f'aria-label="{attr(f"{route.method_name} model path: {len(steps)} layers, input {format_shape(route.input_shape)}")}">'
         f'<title>{esc(route.method_name)} model path</title><desc>Layer graph. Each node shows input and output tensor dimensions; arrows show data flow.</desc>'
-        f'<defs><marker id="{uid}-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker>{skip_markers}</defs>'
+        f'<defs><marker id="{uid}-arrow" markerWidth="9" markerHeight="8" refX="8.5" refY="4" orient="auto"><path d="M 0.7 0.2 Q 0 0 0 0.9 V 7.1 Q 0 8 0.7 7.6 L 7.6 4.5 Q 8.7 4 7.6 3.5 Z"/></marker>{skip_markers}</defs>'
         f'<rect class="nn-svg-port" x="{cx - 260:g}" y="12" width="520" height="54" rx="13"/>'
         f'<text class="nn-svg-port-label" x="{cx:g}" y="33" text-anchor="middle">INPUT · {esc(route.input_name)}</text>'
         f'<text class="nn-svg-port-shape" x="{cx:g}" y="53" text-anchor="middle">{esc(format_shape(route.input_shape))}</text>'

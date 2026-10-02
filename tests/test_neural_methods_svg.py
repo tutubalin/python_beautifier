@@ -122,6 +122,23 @@ def test_schema_contains_one_inline_svg_per_execution_method_and_an_expandable_t
     assert "method contents" in html and "model code is never run" in html
 
 
+def test_input_arrowheads_have_a_small_gap_before_the_first_node_and_rounded_tips():
+    code = '''
+from torch import nn
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj = nn.Linear(8, 4)
+    def forward(self, x):
+        return self.proj(x)
+'''
+    html = beautify(code)
+    input_path = re.search(r'<path class="nn-edge" d="M 545 67 V (\d+)"', html)
+    assert input_path and int(input_path.group(1)) == 96  # node begins at y=102
+    assert 'refX="8.5"' in html and "Q 8.7 4 7.6 3.5" in html
+    assert "stroke-linecap: round; stroke-linejoin: round" in html
+
+
 def test_crossing_skip_connections_use_distinct_colors_and_lanes():
     code = '''
 from torch import nn
