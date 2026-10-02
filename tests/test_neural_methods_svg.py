@@ -160,7 +160,7 @@ class Net(nn.Module):
     assert late_input.count("Q ") >= 3
 
 
-def test_crossing_skip_connections_use_distinct_colors_and_lanes():
+def test_adjacent_merge_input_stays_a_normal_arrow_and_skip_lanes_are_reused():
     code = '''
 from torch import nn
 class Net(nn.Module):
@@ -181,11 +181,10 @@ class Net(nn.Module):
     html = beautify(code)
     paths = re.findall(r'<path class="nn-edge nn-skip nn-flow-\d+" d="([^"]+)"', html)
     rails = [re.search(r"Q (\d+) [\d.]+", path).group(1) for path in paths]
-    assert len(paths) == 4
-    assert len(set(rails)) == 2  # two independent merges reuse the same two clear lanes
-    assert set(rails[:2]) == set(rails[2:])
-    assert rails[0] != rails[1] and rails[2] != rails[3]
-    for color in range(4):
+    assert len(paths) == 2  # only the non-adjacent branch at each merge is a skip connection
+    assert len(set(rails)) == 1  # independent, non-overlapping routes reuse their lane
+    assert 'class="nn-edge" d="M 545 258 V 290"' in html  # previous layer uses the normal arrow
+    for color in range(2):
         assert f'class="nn-edge nn-skip nn-flow-{color}"' in html
         assert f'id="nn-0-Net-arrow-skip-{color}"' in html
         assert f".nn-edge.nn-skip.nn-flow-{color}" in html
@@ -199,9 +198,11 @@ class Net(nn.Module):
         super().__init__()
         self.a = nn.Linear(8, 8)
         self.b = nn.Linear(8, 8)
+        self.c = nn.Linear(8, 8)
     def forward(self, x):
         a = self.a(x)
         b = self.b(x)
+        c = self.c(x)
         return a + b
 '''
     html = beautify(code)
@@ -216,6 +217,31 @@ class Net(nn.Module):
         endpoints.append(target_y)
     assert spans[0] > spans[1]  # longer source-to-merge path is painted underneath
     assert abs(endpoints[0] - endpoints[1]) == 5  # both arrowheads are individually visible
+
+
+def test_skip_arrows_from_one_source_layer_keep_the_same_color():
+    code = '''
+from torch import nn
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.a = nn.Linear(8, 8)
+        self.b = nn.Linear(8, 8)
+        self.c = nn.Linear(8, 8)
+        self.d = nn.Linear(8, 8)
+    def forward(self, x):
+        a = self.a(x)
+        b = self.b(x)
+        merged = a + b
+        c = self.c(merged)
+        d = self.d(c)
+        return a + d
+'''
+    html = beautify(code)
+    edges = re.findall(r'<path class="nn-edge nn-skip nn-flow-(\d+)" d="([^"]+)"', html)
+    from_first_layer = [color for color, path in edges if path.startswith("M 935 133")]
+    assert len(from_first_layer) == 2
+    assert len(set(from_first_layer)) == 1
 
 
 def test_merge_schema_svg_marks_a_skip_connection():

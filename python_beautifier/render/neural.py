@@ -109,16 +109,16 @@ def _svg(route: Route, uid: str) -> str:
     cx = _NODE_X + _NODE_W / 2
     edge_bits: List[str] = []
     skip_paths: List[tuple[int, int, str]] = []
-    skip_edge_count = 0
     skip_color_count = 8
     skip_colors: set[int] = set()
+    skip_color_by_source: Dict[str, int] = {}
     skip_lane_intervals: List[List[tuple[float, float]]] = []
     farthest_rail = 0
     for target_i, step in enumerate(steps):
         incoming = step.incoming or ("input",)
         skip_producers = [
             producer for producer in incoming
-            if producer in index and not (index[producer] == target_i - 1 and len(incoming) == 1)
+            if producer in index and index[producer] != target_i - 1
         ]
         endpoint_offsets = {
             producer: (rank - (len(skip_producers) - 1) / 2) * 5
@@ -139,7 +139,7 @@ def _svg(route: Route, uid: str) -> str:
                     edge_bits.append(f'<path class="nn-edge" d="{d}" marker-end="url(#{uid}-arrow)"/>')
                 continue
             parent_i = index[producer]
-            if parent_i == target_i - 1 and len(incoming) == 1:
+            if parent_i == target_i - 1:
                 edge_bits.append(f'<path class="nn-edge" d="M {cx:g} {y[parent_i] + _NODE_H} V {y[target_i]}" marker-end="url(#{uid}-arrow)"/>')
             else:
                 source_y = y[parent_i] + _NODE_H / 2
@@ -155,8 +155,9 @@ def _svg(route: Route, uid: str) -> str:
                 skip_lane_intervals[lane_index].append(interval)
                 rail = _NODE_X + _NODE_W + 18 + lane_index * 12
                 farthest_rail = max(farthest_rail, rail)
-                color_index = skip_edge_count % skip_color_count
-                skip_edge_count += 1
+                if producer not in skip_color_by_source:
+                    skip_color_by_source[producer] = len(skip_color_by_source) % skip_color_count
+                color_index = skip_color_by_source[producer]
                 skip_colors.add(color_index)
                 d = _rounded_path([
                     (_NODE_X + _NODE_W, source_y),
