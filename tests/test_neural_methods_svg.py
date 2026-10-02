@@ -122,7 +122,7 @@ def test_schema_contains_one_inline_svg_per_execution_method_and_an_expandable_t
     assert "method contents" in html and "model code is never run" in html
 
 
-def test_input_arrowheads_have_a_small_gap_before_the_first_node_and_rounded_tips():
+def test_input_arrowheads_meet_the_first_node_with_clean_triangular_tips():
     code = '''
 from torch import nn
 class Net(nn.Module):
@@ -134,9 +134,30 @@ class Net(nn.Module):
 '''
     html = beautify(code)
     input_path = re.search(r'<path class="nn-edge" d="M 545 67 V (\d+)"', html)
-    assert input_path and int(input_path.group(1)) == 96  # node begins at y=102
-    assert 'refX="8.5"' in html and "Q 8.7 4 7.6 3.5" in html
+    assert input_path and int(input_path.group(1)) == 102  # arrowhead meets the node boundary
+    assert 'refX="8"' in html and "M 0 0 L 8 4 L 0 8 z" in html
     assert "stroke-linecap: round; stroke-linejoin: round" in html
+
+
+def test_late_input_branch_has_a_short_tail_and_rounded_turn():
+    code = '''
+from torch import nn
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.a = nn.Linear(8, 8)
+        self.b = nn.Linear(8, 8)
+    def forward(self, x):
+        a = self.a(x)
+        b = self.b(x)
+        return a + b
+'''
+    html = beautify(code)
+    paths = re.findall(r'<path class="nn-edge" d="([^"]+)"', html)
+    late_input = next(path for path in paths if path.startswith("M 545 67 L 545"))
+    assert late_input.startswith("M 545 67 L 545 72 Q 545 77")
+    assert late_input.endswith("L 155 227")  # keep the arrowhead attached to the destination box
+    assert late_input.count("Q ") >= 3
 
 
 def test_crossing_skip_connections_use_distinct_colors_and_lanes():
@@ -159,7 +180,7 @@ class Net(nn.Module):
 '''
     html = beautify(code)
     paths = re.findall(r'<path class="nn-edge nn-skip nn-flow-\d+" d="([^"]+)"', html)
-    rails = [re.search(r"H (\d+) V", path).group(1) for path in paths]
+    rails = [re.search(r"Q (\d+) [\d.]+", path).group(1) for path in paths]
     assert len(paths) == 4
     assert len(set(rails)) == 2  # two independent merges reuse the same two clear lanes
     assert set(rails[:2]) == set(rails[2:])
@@ -189,7 +210,8 @@ class Net(nn.Module):
     spans = []
     endpoints = []
     for path in paths:
-        source_y, target_y = map(float, re.search(r"M \d+ (\d+(?:\.\d+)?) H \d+ V (\d+(?:\.\d+)?) H", path).groups())
+        source_y = float(re.match(r"M \d+ ([\d.]+)", path).group(1))
+        target_y = float(re.search(r"L \d+ ([\d.]+)$", path).group(1))
         spans.append(abs(target_y - source_y))
         endpoints.append(target_y)
     assert spans[0] > spans[1]  # longer source-to-merge path is painted underneath
