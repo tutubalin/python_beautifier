@@ -20,6 +20,7 @@ class SmallNet(nn.Module):
 def test_graph_only_api_returns_a_focused_self_contained_page():
     html = beautify_graph(MODEL, filename="model.py")
     assert "SmallNet" in html and "Model schema" in html
+    assert '<h2><code>SmallNet</code></h2>' in html
     assert "Graph Explorer" in html or "· Graphs" in html
     assert "Source walkthrough" not in html
     assert 'id="pb-source"' not in html

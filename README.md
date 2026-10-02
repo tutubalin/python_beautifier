@@ -149,7 +149,7 @@ The diagram expands `nn.Sequential`, traces `ModuleList` loops once, marks eleme
 merges, and annotates tensor shape before and after each layer. Locally defined custom modules remain
 class-like nodes in the overview; click a module node (or its summary in the detailed trace) to expand
 its internals, with nested modules collapsed the same way. Skip arrows from the same source share
-one colored lane; different sources keep distinct lanes. Converging arrows are layered longest-first
+one colored route; different sources get separate x/y tracks. Converging arrows are layered longest-first
 with small endpoint offsets. Large 2D graphs can be panned by dragging. Simple routes keep a
 compact linear view; dense skip graphs automatically use a layered 2D layout with color-coded edges,
 reordered blocks, and a 3×3 kernel glyph for known 3×3 convolutions. It understands common `Linear`,

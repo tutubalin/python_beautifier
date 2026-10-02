@@ -43,6 +43,10 @@ def _styles() -> str:
 .graph-page-heading { width: min(1480px, calc(100% - 38px)); margin: 18px auto 8px; color: var(--ink); font: 800 23px var(--font-ui); }
 .graph-page-intro { width: min(1480px, calc(100% - 38px)); margin: 0 auto 16px; color: var(--ink-3); font: 12px/1.55 var(--font-ui); }
 .graph-model { width: min(1480px, calc(100% - 38px)); margin: 16px auto 24px; scroll-margin-top: 74px; }
+.graph-schema-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 8px; padding: 0 3px; }
+.graph-schema-head h2 { margin: 0; color: var(--ink); font: 800 18px var(--font-ui); }
+.graph-schema-head h2 code { font: inherit; }
+.graph-schema-head > span { padding: 3px 8px; border-radius: 99px; background: color-mix(in oklab, var(--nn) 11%, var(--surface)); color: var(--nn); font: 700 10px var(--font-ui); }
 .graph-model > .nn-schema { width: 100%; }
 .graph-empty { width: min(900px, calc(100% - 38px)); margin: 24px auto; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-2); font: 13px/1.6 var(--font-ui); }
 .graph-empty code { font: 11px var(--font-mono); }
@@ -107,7 +111,19 @@ def beautify_graph(
                     index_links.append(f'<a href="#{attr(route_id)}">{esc(schema.name)} · {esc(route.method_name)}</a>')
             else:
                 index_links.append(f'<a href="#graph-model-{schema_index}">{esc(schema.name)}</a>')
-            content.append(f'<div class="graph-model" id="graph-model-{schema_index}">{render_schema(schema)}</div>')
+            detection = {
+                "pytorch": "PyTorch module",
+                "inherited": "local module inheritance",
+                "lookalike": "module-like class",
+                "factory": "sequential factory",
+            }.get(schema.detection, "static model schema")
+            schema_header = (
+                f'<header class="graph-schema-head"><h2><code>{esc(schema.name)}</code></h2>'
+                f'<span>{esc(detection)}</span></header>'
+            )
+            content.append(
+                f'<div class="graph-model" id="graph-model-{schema_index}">{schema_header}{render_schema(schema)}</div>'
+            )
     else:
         text_message = problem or "No statically traceable neural model schemas were found in this file."
         content.append(

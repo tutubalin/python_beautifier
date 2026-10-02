@@ -229,7 +229,7 @@ def _svg_linear(route: Route, uid: str) -> str:
 _D2_NODE_W = 205
 _D2_NODE_H = 88
 _D2_ROW_STEP = 112
-_D2_COL_STEP = 330
+_D2_BASE_GAP = 125
 _D2_LEFT = 190
 
 
@@ -293,11 +293,13 @@ def _svg_layered(route: Route, uid: str) -> str:
     if not steps:
         return ""
     index, ranks, parents, groups = _graph_data(steps)
-    node_x = [_D2_LEFT + rank * _D2_COL_STEP for rank in ranks]
+    max_rank = max(ranks, default=0)
     max_rows = max((len(group) for group in groups), default=1)
     content_height = max_rows * _D2_ROW_STEP
 
-    # Give each source layer one stable rail; all of its skip arrows share it.
+    # Give every source one stable y rail, and reserve a unique x track for both
+    # exits and entries in each inter-column gap. All arrows from one source reuse
+    # its exit track and rail; unrelated sources never share either coordinate.
     lane_by_source: Dict[int, int] = {}
     skip_lanes: Dict[tuple[int, int], int] = {}
     skip_edges = [
@@ -306,10 +308,60 @@ def _svg_layered(route: Route, uid: str) -> str:
         for parent in parent_nodes
         if ranks[target] - ranks[parent] > 1
     ]
+    outgoing = [set() for _ in steps]
+    for target, parent_nodes in enumerate(parents):
+        for parent in parent_nodes:
+            outgoing[parent].add(target)
+    sinks = [i for i in range(len(steps)) if not outgoing[i]] or [len(steps) - 1]
+
+    source_tracks_by_gap: Dict[int, set[int]] = {}
+    target_tracks_by_gap: Dict[int, List[tuple[int, int]]] = {}
     for parent, target in skip_edges:
         if parent not in lane_by_source:
             lane_by_source[parent] = len(lane_by_source)
         skip_lanes[(parent, target)] = lane_by_source[parent]
+        source_tracks_by_gap.setdefault(ranks[parent], set()).add(parent)
+        target_tracks_by_gap.setdefault(ranks[target] - 1, []).append((parent, target))
+    if len(sinks) > 1:
+        for sink in sinks:
+            source_tracks_by_gap.setdefault(ranks[sink], set()).add(sink)
+
+    column_x = [_D2_LEFT]
+    for gap in range(max_rank):
+        track_count = len(source_tracks_by_gap.get(gap, set())) + len(target_tracks_by_gap.get(gap, []))
+        gap_width = max(_D2_BASE_GAP, 18 + 12 * (track_count + 1))
+        column_x.append(column_x[-1] + _D2_NODE_W + gap_width)
+    output_gap_tracks = len(source_tracks_by_gap.get(max_rank, set())) + (len(sinks) if len(sinks) > 1 else 0)
+    output_gap_width = max(70, 18 + 12 * (output_gap_tracks + 1)) if output_gap_tracks else 70
+    output_x = column_x[-1] + _D2_NODE_W + output_gap_width
+    node_x = [column_x[rank] for rank in ranks]
+
+    group_order = {node: order for group in groups for order, node in enumerate(group)}
+    source_track_x: Dict[int, float] = {}
+    target_track_x: Dict[tuple[int, int], float] = {}
+    output_track_x: Dict[int, float] = {}
+    for gap in range(max_rank + 1):
+        sources = sorted(source_tracks_by_gap.get(gap, set()), key=lambda node: group_order[node])
+        targets = sorted(
+            target_tracks_by_gap.get(gap, []),
+            key=lambda edge: (group_order[edge[1]], group_order[edge[0]]),
+        )
+        output_targets = sorted(sinks, key=lambda node: group_order[node]) if gap == max_rank and len(sinks) > 1 else []
+        tracks = (
+            [("source", node) for node in sources]
+            + [("target", edge) for edge in targets]
+            + [("output", node) for node in output_targets]
+        )
+        left = column_x[gap] + _D2_NODE_W + 8
+        right = (column_x[gap + 1] - 8) if gap < max_rank else output_x - 8
+        for order, (track_kind, key) in enumerate(tracks):
+            track_x = left + (order + 1) * (right - left) / (len(tracks) + 1)
+            if track_kind == "source":
+                source_track_x[key] = track_x  # type: ignore[index]
+            elif track_kind == "target":
+                target_track_x[key] = track_x  # type: ignore[index]
+            else:
+                output_track_x[key] = track_x  # type: ignore[index]
 
     top_pad = 50 + 15 * len(lane_by_source)
     node_y = [0.0] * len(steps)
@@ -333,22 +385,18 @@ def _svg_layered(route: Route, uid: str) -> str:
             color_by_source[parent] = len(color_by_source) % 8
         colors.add(color_by_source[parent])
 
-    outgoing = [set() for _ in steps]
-    for target, parent_nodes in enumerate(parents):
-        for parent in parent_nodes:
-            outgoing[parent].add(target)
-    sinks = [i for i in range(len(steps)) if not outgoing[i]] or [len(steps) - 1]
-
-    output_x = node_x[max(range(len(steps)), key=lambda i: ranks[i])] + _D2_NODE_W + 70
     output_shapes = route.output_shapes
     output_text = "OUTPUT"
     if output_shapes:
         output_text += " · " + " | ".join(_clip(format_shape(shape), 22) for shape in output_shapes)
     output_h = max(58, 18 + 16 * len(sinks))
-    graph_center_y = top_pad + content_height / 2
+    graph_center_y = node_cy[sinks[0]] if len(sinks) == 1 else top_pad + content_height / 2
     output_y = graph_center_y - output_h / 2
     bottom_rail_base = top_pad + content_height + 26
-    height = bottom_rail_base + len(sinks) * 14 + 36
+    height = (
+        max(top_pad + content_height + 36, output_y + output_h + 20)
+        if len(sinks) == 1 else bottom_rail_base + len(sinks) * 14 + 36
+    )
     input_x, input_w, port_w = 20, 120, 154
     input_cy = graph_center_y
     view_width = output_x + port_w + 24
@@ -386,34 +434,45 @@ def _svg_layered(route: Route, uid: str) -> str:
             else:
                 lane = skip_lanes[(parent, target)]
                 rail_y = 28 + lane * 14
-                stub = 14
+                source_track = source_track_x[parent]
+                target_track = target_track_x[(parent, target)]
                 d = _rounded_path([
                     (sx, sy),
-                    (sx + stub, sy),
-                    (sx + stub, rail_y),
-                    (tx - stub, rail_y),
-                    (tx - stub, ty),
+                    (source_track, sy),
+                    (source_track, rail_y),
+                    (target_track, rail_y),
+                    (target_track, ty),
                     (tx, ty),
                 ], radius=6)
                 color = color_by_source[parent]
                 edge_bits.append(
-                    f'<path class="nn-2d-edge nn-2d-skip nn-flow-{color}" d="{d}" data-source="{attr(steps[parent].ident)}" data-target="{attr(steps[target].ident)}" data-lane="{lane}" marker-end="url(#{uid}-2d-arrow-skip-{color})"/>'
+                    f'<path class="nn-2d-edge nn-2d-skip nn-flow-{color}" d="{d}" data-source="{attr(steps[parent].ident)}" data-target="{attr(steps[target].ident)}" data-lane="{lane}" data-source-x="{source_track:g}" data-target-x="{target_track:g}" marker-end="url(#{uid}-2d-arrow-skip-{color})"/>'
                 )
 
-    # Send graph sinks to the output along bottom rails, clear of intermediate nodes.
-    ordered_sinks = sorted(sinks, key=lambda sink: (node_cy[sink], sink))
-    for order, sink in enumerate(ordered_sinks):
+    if len(sinks) == 1:
+        sink = sinks[0]
         source_x = node_x[sink] + _D2_NODE_W
         source_y = node_cy[sink]
-        lane_y = bottom_rail_base + order * 14
-        output_target_y = graph_center_y + (order - (len(ordered_sinks) - 1) / 2) * min(14, output_h / max(1, len(ordered_sinks)))
-        stub_x = source_x + 14
-        before_output_x = output_x - 14
-        d = _rounded_path([
-            (source_x, source_y), (stub_x, source_y), (stub_x, lane_y),
-            (before_output_x, lane_y), (before_output_x, output_target_y), (output_x, output_target_y),
-        ], radius=6)
-        edge_bits.append(f'<path class="nn-2d-edge nn-2d-output-edge" d="{d}" marker-end="url(#{uid}-2d-arrow)"/>')
+        edge_bits.append(
+            f'<path class="nn-2d-edge nn-2d-output-edge" d="M {source_x} {source_y:g} H {output_x}" marker-end="url(#{uid}-2d-arrow)"/>'
+        )
+    else:
+        # Multiple terminal branches use bottom rails to stay clear of intermediate nodes.
+        ordered_sinks = sorted(sinks, key=lambda sink: (node_cy[sink], sink))
+        for order, sink in enumerate(ordered_sinks):
+            source_x = node_x[sink] + _D2_NODE_W
+            source_y = node_cy[sink]
+            lane_y = bottom_rail_base + order * 14
+            output_target_y = graph_center_y + (order - (len(ordered_sinks) - 1) / 2) * min(14, output_h / len(ordered_sinks))
+            source_track = source_track_x[sink]
+            output_track = output_track_x[sink]
+            d = _rounded_path([
+                (source_x, source_y), (source_track, source_y), (source_track, lane_y),
+                (output_track, lane_y), (output_track, output_target_y), (output_x, output_target_y),
+            ], radius=6)
+            edge_bits.append(
+                f'<path class="nn-2d-edge nn-2d-output-edge" d="{d}" data-source="{attr(steps[sink].ident)}" data-source-x="{source_track:g}" data-output-x="{output_track:g}" marker-end="url(#{uid}-2d-arrow)"/>'
+            )
 
     nodes: List[str] = []
     for i, step in enumerate(steps):

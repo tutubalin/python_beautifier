@@ -145,15 +145,40 @@ class Net(nn.Module):
     assert 'class="nn-2d-kernel"' in html and "3×3" in html
     assert 'class="nn-2d-node nn-2d-merge"' in html
     edge_matches = re.findall(
-        r'<path class="nn-2d-edge nn-2d-skip nn-flow-(\d+)" d="([^"]+)" data-source="([^"]+)" data-target="[^"]+" data-lane="(\d+)"',
+        r'<path class="nn-2d-edge nn-2d-skip nn-flow-(\d+)" d="([^"]+)" data-source="([^"]+)" data-target="[^"]+" data-lane="(\d+)" data-source-x="([\d.]+)" data-target-x="([\d.]+)"',
         html,
     )
     assert edge_matches
-    lanes_by_source = {source: lane for _, _, source, lane in edge_matches}
-    colors_by_source = {source: color for color, _, source, _ in edge_matches}
+    lanes_by_source = {source: lane for _, _, source, lane, _, _ in edge_matches}
+    colors_by_source = {source: color for color, _, source, _, _, _ in edge_matches}
+    source_x_by_source = {source: x for _, _, source, _, x, _ in edge_matches}
+    target_xs = [target_x for _, _, _, _, _, target_x in edge_matches]
     assert len(set(lanes_by_source.values())) == len(lanes_by_source)
     assert len(set(colors_by_source.values())) == len(colors_by_source)
-    assert 'class="nn-2d-edge nn-2d-output-edge"' in html
+    assert len(set(source_x_by_source.values())) == len(source_x_by_source)
+    assert len(set(target_xs)) == len(target_xs)
+    output_edge = re.search(r'<path class="nn-2d-edge nn-2d-output-edge" d="([^"]+)"', html)
+    assert output_edge and "H " in output_edge.group(1) and "Q " not in output_edge.group(1)
+
+    multi_sink_code = code.replace(
+        "        self.j = nn.Conv2d(8, 8, 3, padding=1)\n",
+        "        self.j = nn.Conv2d(8, 8, 3, padding=1)\n"
+        "        self.out_a = nn.Conv2d(8, 8, 1)\n"
+        "        self.out_b = nn.Conv2d(8, 8, 1)\n",
+    ).replace(
+        "        return m3\n",
+        "        out_a = self.out_a(m3)\n"
+        "        out_b = self.out_b(m3)\n"
+        "        return out_a, out_b\n",
+    )
+    multi_sink_html = beautify(multi_sink_code)
+    output_tracks = re.findall(
+        r'<path class="nn-2d-edge nn-2d-output-edge"[^>]+data-source-x="([\d.]+)" data-output-x="([\d.]+)"',
+        multi_sink_html,
+    )
+    assert len(output_tracks) == 2
+    assert len({source_x for source_x, _ in output_tracks}) == 2
+    assert len({output_x for _, output_x in output_tracks}) == 2
     assert html.index('class="nn-svg-2d-edges"') > html.index('class="nn-svg-port nn-2d-port"')
     assert 'class="nn-route-title"><code>forward()' in html
 
