@@ -140,7 +140,9 @@ The diagram expands `nn.Sequential`, traces `ModuleList` loops once, marks eleme
 merges, and annotates tensor shape before and after each layer. Locally defined custom modules remain
 class-like nodes in the overview; click a module node (or its summary in the detailed trace) to expand
 its internals, with nested modules collapsed the same way. Skip arrows use separate reusable lanes,
-and converging arrows are layered longest-first with small endpoint offsets. It understands common `Linear`,
+and converging arrows are layered longest-first with small endpoint offsets. Simple routes keep a
+compact linear view; dense skip graphs automatically use a layered 2D layout with color-coded edges,
+reordered blocks, and a 3×3 kernel glyph for known 3×3 convolutions. It understands common `Linear`,
 convolution, pooling, normalization, activation, flatten and shape operations. Input dimensions come
 from a shape in the selected method's docstring or a tensor-shape type annotation when available;
 otherwise it starts with symbolic dimensions such as `[…, 3, H, W]`. Known `Conv2d`/pool formulas are

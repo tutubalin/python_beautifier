@@ -67,6 +67,7 @@
 .nn-route-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 7px; color: var(--ink-2); font: 700 11px var(--font-ui); }
 .nn-route-title code { color: var(--ink); font: 700 12px var(--font-mono); }
 .nn-route-title span { padding: 2px 7px; border-radius: 99px; background: var(--surface-3); color: var(--ink-3); font: 600 9px var(--font-ui); }
+.nn-route-title .nn-layout-mode { padding: 2px 7px; border-radius: 99px; background: color-mix(in oklab, #5276a8 12%, var(--surface)); color: color-mix(in oklab, #5276a8 80%, var(--ink)); font: 700 9px var(--font-ui); font-style: normal; }
 .nn-svg-wrap { min-width: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); scrollbar-color: var(--line-2) transparent; }
 .nn-svg {
   display: block; width: 100%; min-width: 760px; height: auto;
@@ -119,6 +120,47 @@
 .nn-svg-merge .nn-svg-kind, .nn-svg-merge .nn-svg-arrow { fill: var(--c-if); }
 .nn-svg-outport { fill: color-mix(in oklab, var(--nn) 5%, var(--surface)); }
 .nn-svg-output { fill: var(--nn); font: 800 11px var(--font-mono); letter-spacing: .3px; }
+
+/* ---------- layered two-dimensional DAG for dense model paths ------------- */
+.nn-svg-wrap-2d { overflow: auto; }
+.nn-svg-2d { min-width: 0; }
+.nn-svg-2d-edges { fill: none; stroke: var(--ink-4); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nn-2d-edge { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.nn-2d-normal { stroke: color-mix(in oklab, var(--nn) 68%, var(--ink-3)); stroke-width: 2.2; }
+.nn-2d-input, .nn-2d-output-edge { stroke: var(--nn); stroke-width: 2.2; }
+.nn-2d-skip { stroke-width: 2.5; stroke-dasharray: 5 4; }
+.nn-2d-edge.nn-flow-0 { stroke: var(--nn-flow-0); }
+.nn-2d-edge.nn-flow-1 { stroke: var(--nn-flow-1); }
+.nn-2d-edge.nn-flow-2 { stroke: var(--nn-flow-2); }
+.nn-2d-edge.nn-flow-3 { stroke: var(--nn-flow-3); }
+.nn-2d-edge.nn-flow-4 { stroke: var(--nn-flow-4); }
+.nn-2d-edge.nn-flow-5 { stroke: var(--nn-flow-5); }
+.nn-2d-edge.nn-flow-6 { stroke: var(--nn-flow-6); }
+.nn-2d-edge.nn-flow-7 { stroke: var(--nn-flow-7); }
+.nn-svg-2d marker path { fill: var(--nn); }
+.nn-svg-2d marker.nn-arrowhead-0 path { fill: var(--nn-flow-0); }
+.nn-svg-2d marker.nn-arrowhead-1 path { fill: var(--nn-flow-1); }
+.nn-svg-2d marker.nn-arrowhead-2 path { fill: var(--nn-flow-2); }
+.nn-svg-2d marker.nn-arrowhead-3 path { fill: var(--nn-flow-3); }
+.nn-svg-2d marker.nn-arrowhead-4 path { fill: var(--nn-flow-4); }
+.nn-svg-2d marker.nn-arrowhead-5 path { fill: var(--nn-flow-5); }
+.nn-svg-2d marker.nn-arrowhead-6 path { fill: var(--nn-flow-6); }
+.nn-svg-2d marker.nn-arrowhead-7 path { fill: var(--nn-flow-7); }
+.nn-2d-card { fill: var(--surface); stroke: color-mix(in oklab, var(--nn) 30%, var(--line)); stroke-width: 1.5; }
+.nn-2d-conv .nn-2d-card { fill: color-mix(in oklab, #3478b9 8%, var(--surface)); stroke: color-mix(in oklab, #3478b9 68%, var(--line)); }
+.nn-2d-linear .nn-2d-card { fill: color-mix(in oklab, #8254a8 7%, var(--surface)); stroke: color-mix(in oklab, #8254a8 58%, var(--line)); }
+.nn-2d-transform .nn-2d-card { fill: color-mix(in oklab, #bf7b17 7%, var(--surface)); stroke: color-mix(in oklab, #bf7b17 54%, var(--line)); }
+.nn-2d-merge .nn-2d-card { fill: color-mix(in oklab, var(--c-if) 10%, var(--surface)); stroke: color-mix(in oklab, var(--c-if) 68%, var(--line)); }
+.nn-2d-custom .nn-2d-card { stroke: var(--nn); stroke-dasharray: 5 3; }
+.nn-2d-name { fill: var(--ink); font: 700 11px var(--font-mono); }
+.nn-2d-kind { fill: var(--nn); font: 800 9px var(--font-ui); letter-spacing: .04em; }
+.nn-2d-params { fill: var(--ink-3); font: 8px var(--font-mono); }
+.nn-2d-shape { fill: var(--ink-2); font: 8px var(--font-mono); }
+.nn-2d-type-icon { fill: var(--nn); stroke: var(--surface); stroke-width: 1; }
+.nn-2d-icon-label { fill: var(--surface); font: 800 8px var(--font-ui); }
+.nn-2d-kernel rect { fill: var(--nn); stroke: none; }
+.nn-2d-kernel text { fill: var(--ink-3); font: 7px var(--font-mono); }
+.nn-svg-module-link:focus-visible .nn-2d-card { stroke: var(--accent); stroke-width: 3; stroke-dasharray: none; }
 .nn-detail { margin-top: 6px; }
 .nn-detail > summary { width: fit-content; cursor: pointer; color: var(--ink-3); font: 600 10px var(--font-ui); }
 .nn-detail > .nn-flow { margin: 7px 0 2px 10px; }

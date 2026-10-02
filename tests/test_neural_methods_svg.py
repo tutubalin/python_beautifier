@@ -108,6 +108,45 @@ class Model(nn.Module):
     assert schema.output_shapes == [("…", "4")]
 
 
+def test_dense_skip_graph_uses_layered_2d_view_with_conv_kernel_icon():
+    code = '''
+from torch import nn
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.a = nn.Conv2d(8, 8, 3, padding=1)
+        self.b = nn.Conv2d(8, 8, 3, padding=1)
+        self.c = nn.Conv2d(8, 8, 3, padding=1)
+        self.d = nn.Conv2d(8, 8, 3, padding=1)
+        self.e = nn.Conv2d(8, 8, 3, padding=1)
+        self.f = nn.Conv2d(8, 8, 3, padding=1)
+        self.g = nn.Conv2d(8, 8, 3, padding=1)
+        self.h = nn.Conv2d(8, 8, 3, padding=1)
+        self.i = nn.Conv2d(8, 8, 3, padding=1)
+        self.j = nn.Conv2d(8, 8, 3, padding=1)
+    def forward(self, x):
+        a = self.a(x)
+        b = self.b(a)
+        c = self.c(b)
+        d = self.d(c)
+        e = self.e(d)
+        m1 = a + e
+        f = self.f(m1)
+        g = self.g(f)
+        h = self.h(g)
+        m2 = b + h
+        i = self.i(m2)
+        j = self.j(i)
+        m3 = c + j
+        return m3
+'''
+    html = beautify(code)
+    assert 'class="nn-svg nn-svg-2d"' in html
+    assert 'class="nn-2d-kernel"' in html and "3×3" in html
+    assert 'class="nn-2d-node nn-2d-merge"' in html
+    assert 'class="nn-route-title"><code>forward()' in html
+
+
 def test_schema_contains_one_inline_svg_per_execution_method_and_an_expandable_trace():
     html = beautify(TWO_PATHS)
     parser = SvgParser()
@@ -116,6 +155,7 @@ def test_schema_contains_one_inline_svg_per_execution_method_and_an_expandable_t
     assert len(parser.markers) == 2 and len(set(parser.markers)) == 2
     assert parser.paths >= 4  # layer links plus input and output arrows
     assert parser.details == 2
+    assert 'class="nn-svg nn-svg-2d"' not in html  # small schemes retain the compact linear layout
     assert 'class="nn-route-title"><code>forward_kv_extract()' in html
     assert 'class="nn-route-title"><code>forward_kv_cached()' in html
     assert "[…, 8]" in html and "[…, 4]" in html and "[…, 2]" in html
