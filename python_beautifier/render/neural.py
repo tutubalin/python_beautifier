@@ -297,34 +297,45 @@ def _svg_layered(route: Route, uid: str) -> str:
     max_rows = max((len(group) for group in groups), default=1)
     content_height = max_rows * _D2_ROW_STEP
 
-    # Give every source one stable y rail, and reserve a unique x track for both
-    # exits and entries in each inter-column gap. All arrows from one source reuse
-    # its exit track and rail; unrelated sources never share either coordinate.
-    lane_by_source: Dict[int, int] = {}
-    skip_lanes: Dict[tuple[int, int], int] = {}
+    # Route lanes are keyed by (source, color): every arrow in a group reuses
+    # one horizontal rail and one vertical exit track; different sources never
+    # share either. Destination-entry tracks stay edge-specific to avoid merges.
     skip_edges = [
         (parent, target)
         for target, parent_nodes in enumerate(parents)
         for parent in parent_nodes
         if ranks[target] - ranks[parent] > 1
     ]
+    color_by_source: Dict[int, int] = {}
+    for parent, _ in skip_edges:
+        if parent not in color_by_source:
+            color_by_source[parent] = len(color_by_source) % 8
+    colors = set(color_by_source.values())
+    route_by_edge = {
+        (parent, target): (parent, color_by_source[parent])
+        for parent, target in skip_edges
+    }
+    lane_by_route: Dict[tuple[int, int], int] = {}
+    skip_lanes: Dict[tuple[int, int], int] = {}
+
     outgoing = [set() for _ in steps]
     for target, parent_nodes in enumerate(parents):
         for parent in parent_nodes:
             outgoing[parent].add(target)
     sinks = [i for i in range(len(steps)) if not outgoing[i]] or [len(steps) - 1]
 
-    source_tracks_by_gap: Dict[int, set[int]] = {}
+    source_tracks_by_gap: Dict[int, set[tuple[int, int]]] = {}
     target_tracks_by_gap: Dict[int, List[tuple[int, int]]] = {}
     for parent, target in skip_edges:
-        if parent not in lane_by_source:
-            lane_by_source[parent] = len(lane_by_source)
-        skip_lanes[(parent, target)] = lane_by_source[parent]
-        source_tracks_by_gap.setdefault(ranks[parent], set()).add(parent)
+        source_route = route_by_edge[(parent, target)]
+        if source_route not in lane_by_route:
+            lane_by_route[source_route] = len(lane_by_route)
+        skip_lanes[(parent, target)] = lane_by_route[source_route]
+        source_tracks_by_gap.setdefault(ranks[parent], set()).add(source_route)
         target_tracks_by_gap.setdefault(ranks[target] - 1, []).append((parent, target))
     if len(sinks) > 1:
         for sink in sinks:
-            source_tracks_by_gap.setdefault(ranks[sink], set()).add(sink)
+            source_tracks_by_gap.setdefault(ranks[sink], set()).add((sink, -1))
 
     column_x = [_D2_LEFT]
     for gap in range(max_rank):
@@ -337,33 +348,38 @@ def _svg_layered(route: Route, uid: str) -> str:
     node_x = [column_x[rank] for rank in ranks]
 
     group_order = {node: order for group in groups for order, node in enumerate(group)}
-    source_track_x: Dict[int, float] = {}
+    source_track_x: Dict[tuple[int, int], float] = {}
     target_track_x: Dict[tuple[int, int], float] = {}
     output_track_x: Dict[int, float] = {}
     for gap in range(max_rank + 1):
-        sources = sorted(source_tracks_by_gap.get(gap, set()), key=lambda node: group_order[node])
+        sources = sorted(
+            source_tracks_by_gap.get(gap, set()),
+            key=lambda source_route: (group_order[source_route[0]], source_route[1]),
+        )
         targets = sorted(
             target_tracks_by_gap.get(gap, []),
             key=lambda edge: (group_order[edge[1]], group_order[edge[0]]),
         )
-        output_targets = sorted(sinks, key=lambda node: group_order[node]) if gap == max_rank and len(sinks) > 1 else []
+        output_targets = [(sink, -1) for sink in sorted(sinks, key=lambda node: group_order[node])]
+        if gap != max_rank or len(sinks) == 1:
+            output_targets = []
         tracks = (
-            [("source", node) for node in sources]
+            [("source", route) for route in sources]
             + [("target", edge) for edge in targets]
-            + [("output", node) for node in output_targets]
+            + [("output", route) for route in output_targets]
         )
         left = column_x[gap] + _D2_NODE_W + 8
         right = (column_x[gap + 1] - 8) if gap < max_rank else output_x - 8
         for order, (track_kind, key) in enumerate(tracks):
             track_x = left + (order + 1) * (right - left) / (len(tracks) + 1)
             if track_kind == "source":
-                source_track_x[key] = track_x  # type: ignore[index]
+                source_track_x[key] = track_x
             elif track_kind == "target":
-                target_track_x[key] = track_x  # type: ignore[index]
+                target_track_x[key] = track_x
             else:
-                output_track_x[key] = track_x  # type: ignore[index]
+                output_track_x[key[0]] = track_x
 
-    top_pad = 50 + 15 * len(lane_by_source)
+    top_pad = 50 + 15 * len(lane_by_route)
     node_y = [0.0] * len(steps)
     for group in groups:
         offset = (max_rows - len(group)) * _D2_ROW_STEP / 2 + (_D2_ROW_STEP - _D2_NODE_H) / 2
@@ -377,13 +393,6 @@ def _svg_layered(route: Route, uid: str) -> str:
         spacing = min(8.0, 24.0 / max(1, len(ordered) - 1))
         for order, parent in enumerate(ordered):
             incoming_offsets[(parent, target)] = (order - (len(ordered) - 1) / 2) * spacing
-
-    color_by_source: Dict[int, int] = {}
-    colors: set[int] = set()
-    for parent, _ in skip_edges:
-        if parent not in color_by_source:
-            color_by_source[parent] = len(color_by_source) % 8
-        colors.add(color_by_source[parent])
 
     output_shapes = route.output_shapes
     output_text = "OUTPUT"
@@ -434,7 +443,7 @@ def _svg_layered(route: Route, uid: str) -> str:
             else:
                 lane = skip_lanes[(parent, target)]
                 rail_y = 28 + lane * 14
-                source_track = source_track_x[parent]
+                source_track = source_track_x[route_by_edge[(parent, target)]]
                 target_track = target_track_x[(parent, target)]
                 d = _rounded_path([
                     (sx, sy),
@@ -464,7 +473,7 @@ def _svg_layered(route: Route, uid: str) -> str:
             source_y = node_cy[sink]
             lane_y = bottom_rail_base + order * 14
             output_target_y = graph_center_y + (order - (len(ordered_sinks) - 1) / 2) * min(14, output_h / len(ordered_sinks))
-            source_track = source_track_x[sink]
+            source_track = source_track_x[(sink, -1)]
             output_track = output_track_x[sink]
             d = _rounded_path([
                 (source_x, source_y), (source_track, source_y), (source_track, lane_y),

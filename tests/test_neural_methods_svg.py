@@ -134,7 +134,7 @@ class Net(nn.Module):
         f = self.f(m1)
         g = self.g(f)
         h = self.h(g)
-        m2 = b + h
+        m2 = a + b + h
         i = self.i(m2)
         j = self.j(i)
         m3 = c + j
@@ -149,10 +149,19 @@ class Net(nn.Module):
         html,
     )
     assert edge_matches
-    lanes_by_source = {source: lane for _, _, source, lane, _, _ in edge_matches}
-    colors_by_source = {source: color for color, _, source, _, _, _ in edge_matches}
-    source_x_by_source = {source: x for _, _, source, _, x, _ in edge_matches}
-    target_xs = [target_x for _, _, _, _, _, target_x in edge_matches]
+    lanes_by_source = {}
+    colors_by_source = {}
+    source_x_by_source = {}
+    routes_by_source = {}
+    target_xs = []
+    for color, _, source, lane, source_x, target_x in edge_matches:
+        routes_by_source.setdefault(source, []).append((color, lane, source_x))
+        lanes_by_source[source] = lane
+        colors_by_source[source] = color
+        source_x_by_source[source] = source_x
+        target_xs.append(target_x)
+    assert max(map(len, routes_by_source.values())) > 1  # one source fans out to multiple skip targets
+    assert all(len(set(routes)) == 1 for routes in routes_by_source.values())
     assert len(set(lanes_by_source.values())) == len(lanes_by_source)
     assert len(set(colors_by_source.values())) == len(colors_by_source)
     assert len(set(source_x_by_source.values())) == len(source_x_by_source)
