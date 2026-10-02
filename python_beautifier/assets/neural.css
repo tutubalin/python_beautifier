@@ -130,6 +130,7 @@
 .nn-2d-normal { stroke: color-mix(in oklab, var(--nn) 68%, var(--ink-3)); stroke-width: 2.2; }
 .nn-2d-input, .nn-2d-output-edge { stroke: var(--nn); stroke-width: 2.2; }
 .nn-2d-skip { stroke-width: 2.5; stroke-dasharray: 5 4; }
+.nn-2d-skip-trunk { stroke-width: 3; stroke-dasharray: none; }
 .nn-2d-edge.nn-flow-0 { stroke: var(--nn-flow-0); }
 .nn-2d-edge.nn-flow-1 { stroke: var(--nn-flow-1); }
 .nn-2d-edge.nn-flow-2 { stroke: var(--nn-flow-2); }

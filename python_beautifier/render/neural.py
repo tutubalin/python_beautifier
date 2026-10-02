@@ -316,7 +316,6 @@ def _svg_layered(route: Route, uid: str) -> str:
         for parent, target in skip_edges
     }
     lane_by_route: Dict[tuple[int, int], int] = {}
-    skip_lanes: Dict[tuple[int, int], int] = {}
 
     outgoing = [set() for _ in steps]
     for target, parent_nodes in enumerate(parents):
@@ -330,7 +329,6 @@ def _svg_layered(route: Route, uid: str) -> str:
         source_route = route_by_edge[(parent, target)]
         if source_route not in lane_by_route:
             lane_by_route[source_route] = len(lane_by_route)
-        skip_lanes[(parent, target)] = lane_by_route[source_route]
         source_tracks_by_gap.setdefault(ranks[parent], set()).add(source_route)
         target_tracks_by_gap.setdefault(ranks[target] - 1, []).append((parent, target))
     if len(sinks) > 1:
@@ -428,6 +426,7 @@ def _svg_layered(route: Route, uid: str) -> str:
             f'<path class="nn-2d-edge nn-2d-input" d="{d}" marker-end="url(#{uid}-2d-arrow)"/>'
         )
 
+    skip_branches: Dict[tuple[int, int], List[tuple[int, float, float, float]]] = {}
     for target, parent_nodes in enumerate(parents):
         for parent in parent_nodes:
             sx = node_x[parent] + _D2_NODE_W
@@ -441,22 +440,39 @@ def _svg_layered(route: Route, uid: str) -> str:
                     f'<path class="nn-2d-edge nn-2d-normal" d="M {sx} {sy:g} C {c1:g} {sy:g} {c2:g} {ty:g} {tx} {ty:g}" marker-end="url(#{uid}-2d-arrow)"/>'
                 )
             else:
-                lane = skip_lanes[(parent, target)]
-                rail_y = 28 + lane * 14
-                source_track = source_track_x[route_by_edge[(parent, target)]]
+                source_route = route_by_edge[(parent, target)]
                 target_track = target_track_x[(parent, target)]
-                d = _rounded_path([
-                    (sx, sy),
-                    (source_track, sy),
-                    (source_track, rail_y),
-                    (target_track, rail_y),
-                    (target_track, ty),
-                    (tx, ty),
-                ], radius=6)
-                color = color_by_source[parent]
-                edge_bits.append(
-                    f'<path class="nn-2d-edge nn-2d-skip nn-flow-{color}" d="{d}" data-source="{attr(steps[parent].ident)}" data-target="{attr(steps[target].ident)}" data-lane="{lane}" data-source-x="{source_track:g}" data-target-x="{target_track:g}" marker-end="url(#{uid}-2d-arrow-skip-{color})"/>'
-                )
+                skip_branches.setdefault(source_route, []).append((target, tx, ty, target_track))
+
+    # Draw each source/color lane once, then branch from that shared bus to each
+    # destination. This makes fan-out visibly share the same two-axis route.
+    for source_route, branches in sorted(skip_branches.items(), key=lambda item: lane_by_route[item[0]]):
+        parent, color = source_route
+        lane = lane_by_route[source_route]
+        rail_y = 28 + lane * 14
+        source_track = source_track_x[source_route]
+        source_x = node_x[parent] + _D2_NODE_W
+        source_y = node_cy[parent]
+        bus_end_x = max(branch[3] for branch in branches)
+        trunk_d = _rounded_path([
+            (source_x, source_y),
+            (source_track, source_y),
+            (source_track, rail_y),
+            (bus_end_x, rail_y),
+        ], radius=6)
+        edge_bits.append(
+            f'<path class="nn-2d-edge nn-2d-skip nn-2d-skip-trunk nn-flow-{color}" d="{trunk_d}" data-source="{attr(steps[parent].ident)}" data-lane="{lane}" data-source-x="{source_track:g}" data-target-count="{len(branches)}"/>'
+        )
+        ordered_branches = sorted(branches, key=lambda branch: (branch[0], branch[3]))
+        for target, tx, ty, target_track in ordered_branches:
+            branch_d = _rounded_path([
+                (target_track, rail_y),
+                (target_track, ty),
+                (tx, ty),
+            ], radius=6)
+            edge_bits.append(
+                f'<path class="nn-2d-edge nn-2d-skip nn-flow-{color}" d="{branch_d}" data-source="{attr(steps[parent].ident)}" data-target="{attr(steps[target].ident)}" data-lane="{lane}" data-source-x="{source_track:g}" data-target-x="{target_track:g}" marker-end="url(#{uid}-2d-arrow-skip-{color})"/>'
+            )
 
     if len(sinks) == 1:
         sink = sinks[0]

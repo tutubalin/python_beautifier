@@ -166,6 +166,18 @@ class Net(nn.Module):
     assert len(set(colors_by_source.values())) == len(colors_by_source)
     assert len(set(source_x_by_source.values())) == len(source_x_by_source)
     assert len(set(target_xs)) == len(target_xs)
+    trunks = re.findall(
+        r'<path class="nn-2d-edge nn-2d-skip nn-2d-skip-trunk nn-flow-(\d+)" d="[^"]+" data-source="([^"]+)" data-lane="(\d+)" data-source-x="([\d.]+)" data-target-count="(\d+)"',
+        html,
+    )
+    assert len(trunks) == len(routes_by_source)
+    trunk_by_source = {
+        source: (color, lane, source_x, int(target_count))
+        for color, source, lane, source_x, target_count in trunks
+    }
+    for source, edges in routes_by_source.items():
+        color, lane, source_x = edges[0]
+        assert trunk_by_source[source] == (color, lane, source_x, len(edges))
     output_edge = re.search(r'<path class="nn-2d-edge nn-2d-output-edge" d="([^"]+)"', html)
     assert output_edge and "H " in output_edge.group(1) and "Q " not in output_edge.group(1)
 
