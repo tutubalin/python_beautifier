@@ -299,7 +299,7 @@ class Wrap(nn.Module):
     schemas_by_name = {schema.name: schema for schema in found.values()}
 
     # Functional-only modules are selected from method contents; factory returns and
-    # custom residual blocks are expanded from syntax without importing or running code.
+    # custom residual blocks are traced statically but stay collapsed in the overview.
     assert [step.kind for step in schemas_by_name["Clamp"].steps] == ["Tanh"]
     block = schemas_by_name["Block"]
     assert [step.kind for step in block.steps] == ["Conv2d", "ReLU", "Conv2d", "Conditional layer", "Add", "ReLU"]
@@ -307,9 +307,19 @@ class Wrap(nn.Module):
 
     factory = schemas_by_name["Encoder"]
     wrapper = schemas_by_name["Wrap"]
+
+    def nested(steps):
+        for step in steps:
+            yield step
+            yield from nested(step.children)
+
     for schema in (factory, wrapper):
-        assert [step.kind for step in schema.steps].count("Conv2d") == 4
-        assert "Identity" in [step.kind for step in schema.steps]
+        # Custom Block stays one overview node; its implementation is nested on demand.
+        assert [step.kind for step in schema.steps] == ["Conv2d", "Block", "Conv2d"]
+        all_steps = list(nested(schema.steps))
+        assert [step.kind for step in all_steps].count("Conv2d") == 4
+        assert "Identity" in [step.kind for step in all_steps]
+        assert schema.steps[1].children
         assert schema.output_shapes == [("…", "4", "ceil(H/2)", "ceil(W/2)")]
     assert factory.detection == "factory"
     assert wrapper.routes[0].kind == "attribute"

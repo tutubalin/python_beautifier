@@ -153,6 +153,32 @@ class Net(nn.Module):
         assert f".nn-edge.nn-skip.nn-flow-{color}" in html
 
 
+def test_converging_skip_arrows_offset_endpoints_and_paint_short_routes_last():
+    code = '''
+from torch import nn
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.a = nn.Linear(8, 8)
+        self.b = nn.Linear(8, 8)
+    def forward(self, x):
+        a = self.a(x)
+        b = self.b(x)
+        return a + b
+'''
+    html = beautify(code)
+    paths = re.findall(r'<path class="nn-edge nn-skip nn-flow-\d+" d="([^"]+)"', html)
+    assert len(paths) == 2
+    spans = []
+    endpoints = []
+    for path in paths:
+        source_y, target_y = map(float, re.search(r"M \d+ (\d+(?:\.\d+)?) H \d+ V (\d+(?:\.\d+)?) H", path).groups())
+        spans.append(abs(target_y - source_y))
+        endpoints.append(target_y)
+    assert spans[0] > spans[1]  # longer source-to-merge path is painted underneath
+    assert abs(endpoints[0] - endpoints[1]) == 5  # both arrowheads are individually visible
+
+
 def test_merge_schema_svg_marks_a_skip_connection():
     from pathlib import Path
 
@@ -160,7 +186,7 @@ def test_merge_schema_svg_marks_a_skip_connection():
     html = beautify(fixture.read_text(encoding="utf-8"), filename="vision_model.py")
     assert 'class="nn-svg-node nn-svg-merge"' in html
     assert "nn-edge nn-skip" in html
-    assert 'role="img"' in html and "INPUT" in html and "OUTPUT" in html
+    assert 'role="group"' in html and "INPUT" in html and "OUTPUT" in html
 
 
 def test_modulelist_comprehension_and_custom_non_forward_method_calls_remain_visible():
@@ -187,7 +213,9 @@ class Net(nn.Module):
     assert len(block_calls) == 1  # one representative iteration, not three fabricated copies
     assert block_calls[0].kind == "Block"
     assert block_calls[0].out_shape == ("…", "?")
-    assert any("multiple outputs are not separated" in note for note in schema.notes)
+    assert block_calls[0].children
+    assert block_calls[0].children[0].kind == "Linear"
+    assert any("returns multiple values" in note for note in schema.notes)
     assert any("shown once" in note for note in schema.notes)
 
 
@@ -210,6 +238,42 @@ class Net(nn.Module):
     assert [route.method_name for route in schema.routes] == ["encode"]
     assert [(step.name, step.kind) for step in schema.steps] == [("holder.proj", "Linear")]
     assert schema.output_shapes == [("…", "4")]
+
+
+def test_nested_custom_modules_keep_each_internal_graph_collapsed_and_expandable():
+    code = '''
+from torch import nn
+class Inner(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj = nn.Linear(8, 4)
+    def forward(self, x):
+        return self.proj(x)
+class Block(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.inner = Inner()
+        self.out = nn.Linear(4, 2)
+    def forward(self, x):
+        return self.out(self.inner(x))
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.block = Block()
+    def forward(self, x):
+        return self.block(x)
+'''
+    schema = next(item for item in analyze(Source(code)).values() if item.name == "Net")
+    assert [(step.kind, len(step.children)) for step in schema.steps] == [("Block", 2)]
+    inner = schema.steps[0].children[0]
+    assert (inner.kind, [child.kind for child in inner.children]) == ("Inner", ["Linear"])
+    html = beautify(code)
+    module_ids = re.findall(r'<details class="nn-module-expand" id="([^"]+)"', html)
+    assert len(module_ids) >= 3  # Net -> Block -> Inner, plus their class-level schemas
+    linked_ids = re.findall(r'<a class="nn-svg-module-link" href="#([^"]+)"', html)
+    assert len(linked_ids) >= 2 and set(linked_ids) <= set(module_ids)
+    assert '<summary><b>Block</b><span>Expand internals' in html
+    assert '<summary><b>Inner</b><span>Expand internals' in html
 
 
 def test_docstring_layout_labels_are_not_misread_as_tensor_dimensions():

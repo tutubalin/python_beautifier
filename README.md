@@ -137,7 +137,10 @@ the source is parsed, never imported or run.
 Each path gets an inline SVG data-flow diagram, with arrows between layers, skip/merge connections,
 and input/output tensor dimensions. An expandable text trace lists exact connections and parameters.
 The diagram expands `nn.Sequential`, traces `ModuleList` loops once, marks elementwise residual
-merges, and annotates tensor shape before and after each layer. It understands common `Linear`,
+merges, and annotates tensor shape before and after each layer. Locally defined custom modules remain
+class-like nodes in the overview; click a module node (or its summary in the detailed trace) to expand
+its internals, with nested modules collapsed the same way. Skip arrows use separate reusable lanes,
+and converging arrows are layered longest-first with small endpoint offsets. It understands common `Linear`,
 convolution, pooling, normalization, activation, flatten and shape operations. Input dimensions come
 from a shape in the selected method's docstring or a tensor-shape type annotation when available;
 otherwise it starts with symbolic dimensions such as `[…, 3, H, W]`. Known `Conv2d`/pool formulas are
@@ -150,8 +153,8 @@ such as `forward_kv_extract` and `forward_kv_cached` each get their own SVG path
 
 ![Two independent schemas for alternate key-value methods](docs/model-entrypoints.png)
 
-This is best-effort static analysis. Unknown sizes stay symbolic; an imported custom block is shown
-as an opaque node rather than guessed. Both sides of a conditional are shown as alternatives, not
+This is best-effort static analysis. Unknown sizes stay symbolic; imported or statically
+unexpandable custom blocks remain opaque rather than being guessed. Both sides of a conditional are shown as alternatives, not
 as a guaranteed execution order. Arbitrary Python dispatch, dynamic layer construction and
 runtime-dependent shapes cannot always be recovered. PyTorch itself remains an optional dependency
 and the program is never executed.

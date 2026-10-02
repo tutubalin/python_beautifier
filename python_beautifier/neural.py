@@ -62,6 +62,7 @@ class Step:
     out_shape: Shape
     line: int = 0
     merge: bool = False
+    children: List["Step"] = field(default_factory=list)
 
 
 @dataclass
@@ -1108,27 +1109,18 @@ class _Tracer:
         producers = tuple(dict.fromkeys(p for value in returned for p in value.producers))
         return _Value(producers or ("input",), shape)
 
-    def _apply_loop_method(self, spec: Spec, method: str, call: ast.Call, env: Dict[str, _Value]) -> _Value:
-        """Keep a custom ModuleList method call visible when its tuple contract is opaque."""
-        values = [value for arg in call.args if (value := self._eval(arg, env)) is not None]
-        parents = tuple(dict.fromkeys(parent for value in values for parent in value.producers))
-        shape = values[0].shape if values else ("…", "?")
-        name = f"{spec.name.rsplit('.', 1)[0]}[*].{method}"
-        dynamic = Spec(
-            spec.kind, name, {}, f"custom block method {method}; return structure not expanded",
-            custom=True, line=getattr(call, "lineno", 0),
-        )
-        self.notes.append(f"Custom ModuleList method {method} at line {getattr(call, 'lineno', 0)} is shown as one opaque step; its multiple outputs are not separated statically.")
-        return self._add(dynamic, _Value(parents or ("input",), shape), getattr(call, "lineno", 0))
-
-    def _apply_custom(self, spec: Spec, value: _Value, line: int) -> Optional[_Value]:
+    def _trace_custom_body(
+        self,
+        spec: Spec,
+        method: ast.FunctionDef | ast.AsyncFunctionDef,
+        params: Dict[str, object],
+        local: Dict[str, _Value],
+    ) -> tuple[List[Step], List[_Value]]:
+        """Trace a local module method and return its nested graph without flattening it."""
         kind = spec.kind
-        forward = self.class_methods.get(kind, {}).get("forward")
         base_specs = self.class_specs.get(kind)
-        if forward is None or base_specs is None or f"class:{kind}" in self.inline_stack:
-            return None
-        self.used.add(spec.name.split(".", 1)[0])
-        params = dict(spec.params)
+        if not base_specs:
+            return [], []
         specialized: Dict[str, Spec] = {}
         for name, child in base_specs.items():
             resolved = _specialize_spec(child, params)
@@ -1141,26 +1133,110 @@ class _Tracer:
         before_steps = len(self.steps)
         saved = (self.specs, self.methods, self.return_values, self.instance_params, self.known_null_attrs)
         self.specs = specialized
-        self.methods = self.class_methods[kind]
+        self.methods = self.class_methods.get(kind, {})
         self.return_values = []
         self.instance_params = params
         self.known_null_attrs = set(base_specs) - set(specialized)
         self.inline_stack.append(f"class:{kind}")
         try:
-            env = {next((arg.arg for arg in forward.args.args if arg.arg not in ("self", "cls")), "x"): value}
-            self._block(forward.body, env)
+            self._block(method.body, local)
             returned = self.return_values
         finally:
             self.inline_stack.pop()
             self.specs, self.methods, self.return_values, self.instance_params, self.known_null_attrs = saved
-        if not returned:
+        children = copy.deepcopy(self.steps[before_steps:])
+        del self.steps[before_steps:]
+        child_ids = {child.ident for child in children}
+        for child in children:
+            child.incoming = tuple(parent if parent in child_ids else "input" for parent in child.incoming)
+        return children, returned
+
+    @staticmethod
+    def _has_tuple_return(method: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        return any(
+            isinstance(node, ast.Return) and isinstance(node.value, (ast.Tuple, ast.List))
+            for node in analysis.walk_scope(method)
+        )
+
+    @staticmethod
+    def _method_parameters(method: ast.FunctionDef | ast.AsyncFunctionDef) -> List[str]:
+        return [arg.arg for arg in method.args.posonlyargs + method.args.args + method.args.kwonlyargs if arg.arg not in ("self", "cls")]
+
+    def _apply_loop_method(self, spec: Spec, method: str, call: ast.Call, env: Dict[str, _Value]) -> _Value:
+        """Keep custom ModuleList calls as class-like nodes with their method graph nested inside."""
+        line = getattr(call, "lineno", 0)
+        values = [value for arg in call.args if (value := self._eval(arg, env)) is not None]
+        values.extend(value for kw in call.keywords if (value := self._eval(kw.value, env)) is not None)
+        parents = tuple(dict.fromkeys(parent for value in values for parent in value.producers))
+        input_shape = values[0].shape if values else ("…", "?")
+        name = f"{spec.name.rsplit('.', 1)[0]}[*].{method}"
+        method_node = self.class_methods.get(spec.kind, {}).get(method)
+        children: List[Step] = []
+        returned: List[_Value] = []
+        if method_node is not None and self.class_specs.get(spec.kind) and f"class:{spec.kind}" not in self.inline_stack:
+            parameters = self._method_parameters(method_node)
+            args: Dict[str, _Value] = {}
+            for parameter, arg in zip(parameters, call.args):
+                value = self._eval(arg, env)
+                if value is not None:
+                    args[parameter] = value
+            for keyword in call.keywords:
+                if keyword.arg:
+                    value = self._eval(keyword.value, env)
+                    if value is not None:
+                        args[keyword.arg] = value
+            children, returned = self._trace_custom_body(spec, method_node, {}, args)
+        multi_output = method_node is not None and self._has_tuple_return(method_node)
+        if multi_output:
+            output_shape = ("…", "?")
+            note = f"Custom ModuleList method {method} at line {line} returns multiple values; their dimensions are not represented as separate ports."
+            if note not in self.notes:
+                self.notes.append(note)
+        elif returned:
+            output_shape = returned[0].shape if all(value.shape == returned[0].shape for value in returned) else ("?",)
+        else:
+            output_shape = ("…", "?")
+        if not children:
+            detail = f"custom block method {method}; internals not statically expanded"
+        else:
+            detail = f"custom block method {method}; expand for internals"
+        ident = self._id(name)
+        self.steps.append(Step(
+            ident, name, spec.kind, detail, parents or ("input",), input_shape, output_shape,
+            line, children=children,
+        ))
+        self.used.add(spec.name.split(".", 1)[0])
+        return _Value((ident,), output_shape)
+
+    def _apply_custom(self, spec: Spec, value: _Value, line: int) -> Optional[_Value]:
+        kind = spec.kind
+        forward = self.class_methods.get(kind, {}).get("forward")
+        base_specs = self.class_specs.get(kind)
+        if forward is None or base_specs is None or f"class:{kind}" in self.inline_stack:
             return None
-        shape = returned[0].shape if all(v.shape == returned[0].shape for v in returned) else ("?",)
-        producers = tuple(dict.fromkeys(p for v in returned for p in v.producers))
-        if len(self.steps) == before_steps:
+        self.used.add(spec.name.split(".", 1)[0])
+        parameters = self._method_parameters(forward)
+        local = {parameters[0] if parameters else "x": value}
+        children, returned = self._trace_custom_body(spec, forward, dict(spec.params), local)
+        multi_output = self._has_tuple_return(forward)
+        if multi_output:
+            shape = ("…", "?")
+            note = f"Custom module {kind} at line {line} returns multiple values; dimensions are not represented as separate ports."
+            if note not in self.notes:
+                self.notes.append(note)
+        elif returned:
+            shape = returned[0].shape if all(candidate.shape == returned[0].shape for candidate in returned) else ("?",)
+        else:
+            shape = ("…", "?")
+        if not children:
             placeholder = Spec(spec.kind, spec.name, dict(spec.params), spec.shown_params or "custom module", custom=True, line=line)
             return self._add(placeholder, value, line)
-        return _Value(producers or value.producers, shape)
+        ident = self._id(spec.name)
+        self.steps.append(Step(
+            ident, spec.name, spec.kind, spec.shown_params or "custom module",
+            value.producers or ("input",), value.shape, shape, line, children=children,
+        ))
+        return _Value((ident,), shape)
 
     def _known_test(self, node: ast.AST) -> object:
         if isinstance(node, ast.Compare) and len(node.ops) == len(node.comparators) == 1:

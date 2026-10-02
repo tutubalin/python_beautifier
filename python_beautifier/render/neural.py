@@ -29,22 +29,40 @@ def _source_name(ident: str, names: Dict[str, str]) -> str:
     return names.get(ident, "unknown")
 
 
-def _step(step: Step, names: Dict[str, str]) -> str:
+def _module_id(uid: str, step: Step) -> str:
+    return f"{uid}-module-{step.ident}"
+
+
+def _step(step: Step, names: Dict[str, str], uid: str) -> str:
     sources = step.incoming or ("input",)
     if len(sources) == 1:
         source = f'<code>{esc(_source_name(sources[0], names))}</code>'
     else:
         source = " <span class=\"nn-join\">+</span> ".join(f'<code>{esc(_source_name(s, names))}</code>' for s in sources)
-    title = "Elementwise merge" if step.merge else ("Custom module (details are not statically expanded)" if step.kind not in ("Linear", "Conv1d", "Conv2d", "Conv3d", "ConvTranspose1d", "ConvTranspose2d", "ConvTranspose3d") and step.params == "custom module" else step.kind)
+    title = "Elementwise merge" if step.merge else step.kind
     tone = " nn-merge" if step.merge else ""
     params = f'<small class="nn-params">{esc(step.params)}</small>' if step.params else ""
     line = f'<a class="nn-line" href="#L{step.line}" title="Jump to source line {step.line}">L{step.line}</a>' if step.line else ""
+    expanded = ""
+    if step.children:
+        child_names = {child.ident: child.name for child in step.children}
+        child_flow = "".join(_step(child, child_names, f"{uid}-{step.ident}") for child in step.children)
+        expanded = (
+            f'<details class="nn-module-expand" id="{attr(_module_id(uid, step))}">'
+            f'<summary><b>{esc(step.kind)}</b><span>Expand internals · {len(step.children)} layer steps</span></summary>'
+            f'<div class="nn-module-body"><div class="nn-input"><span class="nn-input-label">MODULE INPUT</span>'
+            f'<b>{esc(step.name)}</b><code>{esc(format_shape(step.in_shape))}</code></div>'
+            f'<div class="nn-flow">{child_flow}</div>'
+            f'<div class="nn-output"><b>module output</b><code>{esc(format_shape(step.out_shape))}</code></div></div>'
+            f'</details>'
+        )
     return (
         f'<div class="nn-stage{tone}" title="{attr(title)}">'
         f'<div class="nn-from"><span>from</span>{source}<i class="nn-arrow" aria-hidden="true">{icon("arrow-r")}</i></div>'
         f'<div class="nn-node"><div class="nn-node-top"><b>{esc(step.name)}</b>{line}</div>'
         f'<strong>{esc(step.kind)}</strong>{params}'
-        f'<div class="nn-shapes"><span>{esc(format_shape(step.in_shape))}</span><i aria-hidden="true">{icon("arrow-r")}</i><b>{esc(format_shape(step.out_shape))}</b></div></div></div>'
+        f'<div class="nn-shapes"><span>{esc(format_shape(step.in_shape))}</span><i aria-hidden="true">{icon("arrow-r")}</i><b>{esc(format_shape(step.out_shape))}</b></div></div>'
+        f'{expanded}</div>'
     )
 
 
@@ -64,6 +82,7 @@ def _svg(route: Route, uid: str) -> str:
     height = output_y + 58
     cx = _NODE_X + _NODE_W / 2
     edge_bits: List[str] = []
+    skip_paths: List[tuple[int, int, str]] = []
     skip_edge_count = 0
     skip_color_count = 8
     skip_colors: set[int] = set()
@@ -71,6 +90,14 @@ def _svg(route: Route, uid: str) -> str:
     farthest_rail = 0
     for target_i, step in enumerate(steps):
         incoming = step.incoming or ("input",)
+        skip_producers = [
+            producer for producer in incoming
+            if producer in index and not (index[producer] == target_i - 1 and len(incoming) == 1)
+        ]
+        endpoint_offsets = {
+            producer: (rank - (len(skip_producers) - 1) / 2) * 5
+            for rank, producer in enumerate(skip_producers)
+        }
         for branch_i, producer in enumerate(incoming):
             if producer == "input" or producer not in index:
                 if target_i == 0:
@@ -84,7 +111,7 @@ def _svg(route: Route, uid: str) -> str:
                 edge_bits.append(f'<path class="nn-edge" d="M {cx:g} {y[parent_i] + _NODE_H} V {y[target_i]}" marker-end="url(#{uid}-arrow)"/>')
             else:
                 source_y = y[parent_i] + _NODE_H / 2
-                target_y = y[target_i] + _NODE_H / 2
+                target_y = y[target_i] + _NODE_H / 2 + endpoint_offsets.get(producer, 0)
                 interval = (min(source_y, target_y), max(source_y, target_y))
                 lane_index = next(
                     (i for i, occupied in enumerate(skip_lane_intervals)
@@ -99,9 +126,14 @@ def _svg(route: Route, uid: str) -> str:
                 color_index = skip_edge_count % skip_color_count
                 skip_edge_count += 1
                 skip_colors.add(color_index)
-                edge_bits.append(
+                path = (
                     f'<path class="nn-edge nn-skip nn-flow-{color_index}" d="M {_NODE_X + _NODE_W} {source_y} H {rail} V {target_y} H {_NODE_X + _NODE_W}" marker-end="url(#{uid}-arrow-skip-{color_index})"/>'
                 )
+                path_length = abs(target_i - parent_i)
+                skip_paths.append((target_i, path_length, path))
+    # SVG paints later paths on top: group by destination, drawing the longer
+    # vertical routes first and short paths last so converging arrowheads remain visible.
+    edge_bits.extend(path for _, _, path in sorted(skip_paths, key=lambda item: (item[0], -item[1])))
     skip_markers = "".join(
         f'<marker class="nn-arrowhead-{i}" id="{uid}-arrow-skip-{i}" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker>'
         for i in sorted(skip_colors)
@@ -111,10 +143,26 @@ def _svg(route: Route, uid: str) -> str:
         top = y[i]
         source_names = [_source_name(p, names) for p in step.incoming if p in names or p == "input"]
         source_text = " + ".join(source_names) or "input"
-        node_class = "nn-svg-node nn-svg-merge" if step.merge else "nn-svg-node"
+        node_classes = ["nn-svg-node"]
+        if step.merge:
+            node_classes.append("nn-svg-merge")
+        if step.children:
+            node_classes.append("nn-svg-expandable")
+        node_class = " ".join(node_classes)
         line = f'<text class="nn-svg-line" x="{_NODE_X + _NODE_W - 16}" y="{top + 23}" text-anchor="end">L{step.line}</text>' if step.line else ""
+        link_open = (
+            f'<a class="nn-svg-module-link" href="#{attr(_module_id(uid, step))}" '
+            f'aria-label="Expand {attr(step.kind)} module internals">'
+            if step.children else ""
+        )
+        link_close = "</a>" if step.children else ""
+        expand_hint = (
+            f'<circle class="nn-svg-expand-badge" cx="{_NODE_X + _NODE_W - 15}" cy="{top + 13}" r="8"/>'
+            f'<text class="nn-svg-expand-mark" x="{_NODE_X + _NODE_W - 15}" y="{top + 17}" text-anchor="middle">+</text>'
+            if step.children else ""
+        )
         nodes.append(
-            f'<g class="{node_class}"><title>{esc(step.name)} · {esc(step.kind)} · {esc(format_shape(step.in_shape))} to {esc(format_shape(step.out_shape))}</title>'
+            f'{link_open}<g class="{node_class}"><title>{esc(step.name)} · {esc(step.kind)} · {esc(format_shape(step.in_shape))} to {esc(format_shape(step.out_shape))}{" · click to expand" if step.children else ""}</title>'
             f'<rect x="{_NODE_X}" y="{top}" width="{_NODE_W}" height="{_NODE_H}" rx="12"/>'
             f'<text class="nn-svg-name" x="{_NODE_X + 18}" y="{top + 25}">{esc(_clip(step.name, 30))}</text>{line}'
             f'<text class="nn-svg-kind" x="{_NODE_X + 230}" y="{top + 25}">{esc(_clip(step.kind, 24))}</text>'
@@ -123,7 +171,7 @@ def _svg(route: Route, uid: str) -> str:
             f'<text class="nn-svg-arrow" x="{_NODE_X + 370}" y="{top + 48}">→</text>'
             f'<text class="nn-svg-shape nn-svg-out" x="{_NODE_X + 410}" y="{top + 48}">{esc(_clip(format_shape(step.out_shape), 38))}</text>'
             f'<text class="nn-svg-from" x="{_NODE_X + _NODE_W - 16}" y="{top + 48}" text-anchor="end">from {esc(_clip(source_text, 25))}</text>'
-            '</g>'
+            f'{expand_hint}</g>{link_close}'
         )
     output_label = "OUTPUT · " + "  |  ".join(_clip(format_shape(shape), 42) for shape in route.output_shapes)
     if not route.output_shapes:
@@ -131,7 +179,7 @@ def _svg(route: Route, uid: str) -> str:
     outs = f'<text class="nn-svg-output" x="{cx:g}" y="{output_y + 26}" text-anchor="middle">{esc(output_label)}</text>'
     view_width = max(_SVG_W, farthest_rail + 20)
     return (
-        f'<div class="nn-svg-wrap"><svg class="nn-svg" viewBox="0 0 {view_width} {height}" role="img" '
+        f'<div class="nn-svg-wrap"><svg class="nn-svg" viewBox="0 0 {view_width} {height}" role="group" '
         f'aria-label="{attr(f"{route.method_name} model path: {len(steps)} layers, input {format_shape(route.input_shape)}")}">'
         f'<title>{esc(route.method_name)} model path</title><desc>Layer graph. Each node shows input and output tensor dimensions; arrows show data flow.</desc>'
         f'<defs><marker id="{uid}-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z"/></marker>{skip_markers}</defs>'
@@ -150,7 +198,7 @@ def _route(route: Route, uid: str) -> str:
     suffix = "()" if route.kind == "method" else ""
     heading = f'<h5 class="nn-route-title"><code>{esc(route.method_name)}{suffix}</code><span>{count}</span></h5>'
     svg = _svg(route, uid)
-    detailed = "".join(_step(step, names) for step in route.steps)
+    detailed = "".join(_step(step, names, uid) for step in route.steps)
     outputs = "".join(
         f'<span class="nn-output"><b>output</b><code>{esc(format_shape(shape))}</code></span>'
         for shape in route.output_shapes
