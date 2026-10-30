@@ -1,0 +1,172 @@
+/* ---------- statically inferred neural-network schemas ------------------- */
+.nn-schema {
+  --nn: #0d9488;
+  padding: 16px 18px 13px;
+  border: 1px solid color-mix(in oklab, var(--nn) 24%, var(--line));
+  border-radius: var(--r-lg);
+  background: linear-gradient(135deg, color-mix(in oklab, var(--nn) 5%, var(--surface)), var(--surface) 72%);
+  box-shadow: var(--shadow-s);
+}
+.nn-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.nn-head .sh { flex: 1; margin: 0; color: var(--ink-2); }
+.nn-head .sh .i { color: var(--nn); }
+.nn-detect, .nn-count { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px; font: 700 10px/1.6 var(--font-ui); white-space: nowrap; }
+.nn-detect { color: var(--nn); background: color-mix(in oklab, var(--nn) 11%, transparent); }
+.nn-detect .i { width: 12px; height: 12px; }
+.nn-count { color: var(--ink-3); background: var(--surface-3); font-weight: 600; }
+.nn-intro, .nn-foot { margin: 6px 0 12px; color: var(--ink-3); font: 12px/1.5 var(--font-ui); }
+.nn-intro code, .nn-foot code { padding: 1px 4px; border-radius: 4px; background: var(--surface-3); font: 11px var(--font-mono); color: var(--ink-2); }
+.nn-flow { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.nn-input, .nn-output { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 10px; border: 1px dashed color-mix(in oklab, var(--nn) 36%, var(--line)); border-radius: 10px; background: color-mix(in oklab, var(--nn) 4%, var(--surface)); }
+.nn-input-label, .nn-output b { color: var(--nn); font: 800 9px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.nn-input > b { color: var(--ink); font: 700 12px var(--font-mono); }
+.nn-input code, .nn-output code { margin-left: auto; color: var(--ink-2); font: 600 11px var(--font-mono); overflow-wrap: anywhere; }
+.nn-stage { display: grid; grid-template-columns: minmax(100px, .7fr) minmax(230px, 1.5fr); align-items: stretch; gap: 8px; min-width: 0; }
+.nn-from { display: flex; flex-wrap: wrap; align-content: center; align-items: center; gap: 3px 6px; min-width: 0; padding: 6px 10px; border-radius: 9px; background: var(--surface-2); color: var(--ink-3); font: 10px var(--font-ui); }
+.nn-from > span { flex-basis: 100%; color: var(--ink-4); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.nn-from code { color: var(--ink-2); font: 600 10.5px var(--font-mono); overflow-wrap: anywhere; }
+.nn-join { color: var(--c-if); font-weight: 900; }
+.nn-arrow { display: inline-flex; align-items: center; color: var(--nn); }
+.nn-arrow .i { width: 15px; height: 15px; }
+.nn-node { display: grid; grid-template-columns: minmax(75px, .8fr) minmax(70px, .7fr) minmax(80px, 1fr) minmax(180px, 1.6fr); align-items: center; gap: 4px 10px; min-width: 0; padding: 8px 11px; border: 1px solid color-mix(in oklab, var(--nn) 24%, var(--line)); border-left: 3px solid var(--nn); border-radius: 10px; background: var(--surface); }
+.nn-node-top { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+.nn-node-top b { color: var(--ink); font: 700 11px var(--font-mono); overflow-wrap: anywhere; }
+.nn-line { color: var(--ink-4); font: 9px var(--font-mono); text-decoration: none; }
+.nn-line:hover { color: var(--accent); text-decoration: underline; }
+.nn-node > strong { color: var(--nn); font: 800 10px var(--font-ui); letter-spacing: .03em; }
+.nn-params { color: var(--ink-3); font: 10px/1.4 var(--font-mono); overflow-wrap: anywhere; }
+.nn-shapes { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 3px 5px; min-width: 0; color: var(--ink-3); font: 10px/1.4 var(--font-mono); }
+.nn-shapes > span, .nn-shapes > b { overflow-wrap: anywhere; }
+.nn-shapes > b { color: var(--ink-2); }
+.nn-shapes .i { width: 12px; height: 12px; color: var(--nn); }
+.nn-merge .nn-node { --nn: var(--c-if); }
+.nn-module-expand { grid-column: 1 / -1; margin: 0 0 2px 10px; border: 1px solid color-mix(in oklab, var(--nn) 22%, var(--line)); border-radius: 10px; background: color-mix(in oklab, var(--nn) 3%, var(--surface)); }
+.nn-module-expand > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 9px; padding: 7px 10px; cursor: pointer; color: var(--ink-2); font: 600 10px var(--font-ui); list-style-position: inside; }
+.nn-module-expand > summary b { color: var(--nn); font: 800 10px var(--font-mono); }
+.nn-module-expand > summary span { color: var(--ink-3); }
+.nn-module-body { display: grid; gap: 7px; padding: 0 9px 9px; }
+.nn-module-body > .nn-input, .nn-module-body > .nn-output { margin-left: 10px; }
+.nn-module-body > .nn-flow { margin-left: 10px; }
+.nn-module-body > .nn-output { border-style: solid; }
+.nn-notes { margin: 8px 0 0; padding: 0 0 0 19px; color: var(--ink-2); font: 11px/1.55 var(--font-ui); }
+.nn-foot { margin: 8px 0 0; font-size: 10.5px; }
+@media (max-width: 720px) {
+  .nn-schema { padding: 12px; }
+  .nn-stage { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .nn-from { flex-direction: row; align-content: center; padding: 4px 8px; }
+  .nn-from > span { flex-basis: auto; }
+  .nn-from .nn-arrow { margin-left: auto; transform: rotate(90deg); }
+  .nn-node { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .nn-shapes { grid-column: 1 / -1; justify-content: flex-start; }
+  .nn-module-expand { margin-left: 0; }
+  .nn-input code, .nn-output code { margin-left: 0; }
+}
+
+/* ---------- inline SVG data-flow diagram ---------------------------------- */
+.nn-route { min-width: 0; margin-top: 14px; }
+.nn-route-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 7px; color: var(--ink-2); font: 700 11px var(--font-ui); }
+.nn-route-title code { color: var(--ink); font: 700 12px var(--font-mono); }
+.nn-route-title span { padding: 2px 7px; border-radius: 99px; background: var(--surface-3); color: var(--ink-3); font: 600 9px var(--font-ui); }
+.nn-route-title .nn-layout-mode { padding: 2px 7px; border-radius: 99px; background: color-mix(in oklab, #5276a8 12%, var(--surface)); color: color-mix(in oklab, #5276a8 80%, var(--ink)); font: 700 9px var(--font-ui); font-style: normal; }
+.nn-svg-wrap { min-width: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); scrollbar-color: var(--line-2) transparent; }
+.nn-svg {
+  display: block; width: 100%; min-width: 760px; height: auto;
+  --nn-flow-0: color-mix(in oklab, #0072b2 86%, var(--ink));
+  --nn-flow-1: color-mix(in oklab, #d55e00 86%, var(--ink));
+  --nn-flow-2: color-mix(in oklab, #009e73 86%, var(--ink));
+  --nn-flow-3: color-mix(in oklab, #cc79a7 86%, var(--ink));
+  --nn-flow-4: color-mix(in oklab, #a16a00 86%, var(--ink));
+  --nn-flow-5: color-mix(in oklab, #4c6fbf 86%, var(--ink));
+  --nn-flow-6: color-mix(in oklab, #007f8b 86%, var(--ink));
+  --nn-flow-7: color-mix(in oklab, #7b4f9d 86%, var(--ink));
+}
+.nn-svg-port { fill: var(--surface); stroke: color-mix(in oklab, var(--nn) 38%, var(--line)); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.nn-svg-port-label { fill: var(--nn); font: 800 10px var(--font-ui); letter-spacing: 1.4px; }
+.nn-svg-port-shape { fill: var(--ink-2); font: 600 12px var(--font-mono); }
+.nn-svg-edges { fill: none; stroke: var(--nn); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.nn-svg marker path { fill: var(--nn); }
+.nn-edge.nn-skip { stroke-width: 2.7; stroke-dasharray: 5 4; }
+.nn-edge.nn-skip.nn-flow-0 { stroke: var(--nn-flow-0); }
+.nn-edge.nn-skip.nn-flow-1 { stroke: var(--nn-flow-1); }
+.nn-edge.nn-skip.nn-flow-2 { stroke: var(--nn-flow-2); }
+.nn-edge.nn-skip.nn-flow-3 { stroke: var(--nn-flow-3); }
+.nn-edge.nn-skip.nn-flow-4 { stroke: var(--nn-flow-4); }
+.nn-edge.nn-skip.nn-flow-5 { stroke: var(--nn-flow-5); }
+.nn-edge.nn-skip.nn-flow-6 { stroke: var(--nn-flow-6); }
+.nn-edge.nn-skip.nn-flow-7 { stroke: var(--nn-flow-7); }
+.nn-svg marker.nn-arrowhead-0 path { fill: var(--nn-flow-0); }
+.nn-svg marker.nn-arrowhead-1 path { fill: var(--nn-flow-1); }
+.nn-svg marker.nn-arrowhead-2 path { fill: var(--nn-flow-2); }
+.nn-svg marker.nn-arrowhead-3 path { fill: var(--nn-flow-3); }
+.nn-svg marker.nn-arrowhead-4 path { fill: var(--nn-flow-4); }
+.nn-svg marker.nn-arrowhead-5 path { fill: var(--nn-flow-5); }
+.nn-svg marker.nn-arrowhead-6 path { fill: var(--nn-flow-6); }
+.nn-svg marker.nn-arrowhead-7 path { fill: var(--nn-flow-7); }
+.nn-svg-node rect { fill: var(--surface); stroke: color-mix(in oklab, var(--nn) 32%, var(--line)); stroke-width: 1.4; }
+.nn-svg-expandable rect { stroke-dasharray: 5 3; }
+.nn-svg-module-link { cursor: pointer; text-decoration: none; }
+.nn-svg-module-link:focus-visible .nn-svg-node rect { stroke: var(--accent); stroke-width: 3; stroke-dasharray: none; }
+.nn-svg-expand-badge { fill: var(--nn); stroke: var(--surface); stroke-width: 1.5; }
+.nn-svg-expand-mark { fill: var(--surface); font: 800 13px var(--font-ui); pointer-events: none; }
+.nn-svg-node > title { color: var(--ink); }
+.nn-svg-name { fill: var(--ink); font: 700 12px var(--font-mono); }
+.nn-svg-kind { fill: var(--nn); font: 800 10px var(--font-ui); letter-spacing: .35px; }
+.nn-svg-params, .nn-svg-line, .nn-svg-from { fill: var(--ink-3); font: 9px var(--font-mono); }
+.nn-svg-line { fill: var(--ink-4); }
+.nn-svg-shape { fill: var(--ink-3); font: 10px var(--font-mono); }
+.nn-svg-arrow { fill: var(--nn); font: 700 14px var(--font-ui); }
+.nn-svg-out { fill: var(--ink-2); font-weight: 700; }
+.nn-svg-merge rect { stroke: color-mix(in oklab, var(--c-if) 60%, var(--line)); }
+.nn-svg-merge .nn-svg-kind, .nn-svg-merge .nn-svg-arrow { fill: var(--c-if); }
+.nn-svg-outport { fill: color-mix(in oklab, var(--nn) 5%, var(--surface)); }
+.nn-svg-output { fill: var(--nn); font: 800 11px var(--font-mono); letter-spacing: .3px; }
+
+/* ---------- layered two-dimensional DAG for dense model paths ------------- */
+.nn-svg-wrap-2d { max-height: min(78vh, 900px); overflow: auto; cursor: grab; touch-action: none; }
+.nn-svg-wrap-2d.is-panning { cursor: grabbing; user-select: none; }
+.nn-svg-2d { min-width: 0; }
+.nn-svg-2d-edges { fill: none; stroke: var(--ink-4); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nn-2d-edge { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.nn-2d-normal { stroke: color-mix(in oklab, var(--nn) 68%, var(--ink-3)); stroke-width: 2.2; }
+.nn-2d-input, .nn-2d-output-edge { stroke: var(--nn); stroke-width: 2.2; }
+.nn-2d-skip { stroke-width: 2.5; stroke-dasharray: 5 4; }
+.nn-2d-skip-trunk { stroke-width: 3; stroke-dasharray: none; }
+.nn-2d-edge.nn-flow-0 { stroke: var(--nn-flow-0); }
+.nn-2d-edge.nn-flow-1 { stroke: var(--nn-flow-1); }
+.nn-2d-edge.nn-flow-2 { stroke: var(--nn-flow-2); }
+.nn-2d-edge.nn-flow-3 { stroke: var(--nn-flow-3); }
+.nn-2d-edge.nn-flow-4 { stroke: var(--nn-flow-4); }
+.nn-2d-edge.nn-flow-5 { stroke: var(--nn-flow-5); }
+.nn-2d-edge.nn-flow-6 { stroke: var(--nn-flow-6); }
+.nn-2d-edge.nn-flow-7 { stroke: var(--nn-flow-7); }
+.nn-svg-2d marker path { fill: var(--nn); }
+.nn-svg-2d marker.nn-arrowhead-0 path { fill: var(--nn-flow-0); }
+.nn-svg-2d marker.nn-arrowhead-1 path { fill: var(--nn-flow-1); }
+.nn-svg-2d marker.nn-arrowhead-2 path { fill: var(--nn-flow-2); }
+.nn-svg-2d marker.nn-arrowhead-3 path { fill: var(--nn-flow-3); }
+.nn-svg-2d marker.nn-arrowhead-4 path { fill: var(--nn-flow-4); }
+.nn-svg-2d marker.nn-arrowhead-5 path { fill: var(--nn-flow-5); }
+.nn-svg-2d marker.nn-arrowhead-6 path { fill: var(--nn-flow-6); }
+.nn-svg-2d marker.nn-arrowhead-7 path { fill: var(--nn-flow-7); }
+.nn-2d-card { fill: var(--surface); stroke: color-mix(in oklab, var(--nn) 30%, var(--line)); stroke-width: 1.5; }
+.nn-2d-conv .nn-2d-card { fill: color-mix(in oklab, #3478b9 8%, var(--surface)); stroke: color-mix(in oklab, #3478b9 68%, var(--line)); }
+.nn-2d-linear .nn-2d-card { fill: color-mix(in oklab, #8254a8 7%, var(--surface)); stroke: color-mix(in oklab, #8254a8 58%, var(--line)); }
+.nn-2d-transform .nn-2d-card { fill: color-mix(in oklab, #bf7b17 7%, var(--surface)); stroke: color-mix(in oklab, #bf7b17 54%, var(--line)); }
+.nn-2d-merge .nn-2d-card { fill: color-mix(in oklab, var(--c-if) 10%, var(--surface)); stroke: color-mix(in oklab, var(--c-if) 68%, var(--line)); }
+.nn-2d-custom .nn-2d-card { stroke: var(--nn); stroke-dasharray: 5 3; }
+.nn-2d-name { fill: var(--ink); font: 700 11px var(--font-mono); }
+.nn-2d-kind { fill: var(--nn); font: 800 9px var(--font-ui); letter-spacing: .04em; }
+.nn-2d-params { fill: var(--ink-3); font: 8px var(--font-mono); }
+.nn-2d-shape { fill: var(--ink-2); font: 8px var(--font-mono); }
+.nn-2d-type-icon { fill: var(--nn); stroke: var(--surface); stroke-width: 1; }
+.nn-2d-icon-label { fill: var(--surface); font: 800 8px var(--font-ui); }
+.nn-2d-kernel rect { fill: var(--nn); stroke: none; }
+.nn-2d-kernel text { fill: var(--ink-3); font: 7px var(--font-mono); }
+.nn-svg-module-link:focus-visible .nn-2d-card { stroke: var(--accent); stroke-width: 3; stroke-dasharray: none; }
+.nn-detail { margin-top: 6px; }
+.nn-detail > summary { width: fit-content; cursor: pointer; color: var(--ink-3); font: 600 10px var(--font-ui); }
+.nn-detail > .nn-flow { margin: 7px 0 2px 10px; }
+@media (max-width: 720px) {
+  .nn-svg { min-width: 760px; }
+  .nn-schema { padding: 12px; }
+}
